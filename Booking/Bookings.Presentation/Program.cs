@@ -4,6 +4,7 @@ using Bookings.Infrastructure.Repositories;
 using Bookings.Presentation.Middleware;
 using Bookings.Presentation.Validators;
 using FluentValidation.AspNetCore;
+using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +22,7 @@ void ConfigureServices(IServiceCollection services)
 
     services.AddEndpointsApiExplorer();
     services.AddSwaggerGen();
+    services.UseHttpClientMetrics();
 
     services.AddControllers()
             .AddFluentValidation(fv => fv.RegisterValidatorsFromAssemblyContaining<CreateBookingDtoValidator>());
@@ -36,6 +38,9 @@ void ConfigureMiddleware(WebApplication app)
 {
     app.UseMiddleware<ErrorHandlingMiddleware>();
 
+    app.UseRouting();
+    app.UseMetricServer();
+    app.UseHttpMetrics();
 
     if (app.Environment.IsDevelopment())
     {
