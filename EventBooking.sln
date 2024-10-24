@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		.env = .env
 		docker-compose.yml = docker-compose.yml
+		logstash.conf = logstash.conf
+		prometheus.yml = prometheus.yml
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventManagements.Presentation", "EventManagement\EventManagements.Presentation\EventManagements.Presentation.csproj", "{FA2FFDD8-3ACB-4E91-BE89-F977CBFC02DC}"
@@ -37,9 +39,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Bookings.IntegrationTests",
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EventManagement.Tests", "EventManagement.Tests", "{E39029C4-D3A6-4224-8FE3-9E5531ABEA58}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventManagement.Tests", "EventManagement.Tests\EventManagement.Tests\EventManagement.Tests.csproj", "{6C1DFC9C-2EB1-4B3F-BD3B-7B402937F346}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventManagement.Tests", "EventManagement.Tests\EventManagement.Tests\EventManagement.Tests.csproj", "{6C1DFC9C-2EB1-4B3F-BD3B-7B402937F346}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventManagement.IntegrationTests", "EventManagement.Tests\EventManagement.IntegrationTests\EventManagement.IntegrationTests.csproj", "{07045BE8-7F23-46C7-9AB7-6FC16FCF0684}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventManagement.IntegrationTests", "EventManagement.Tests\EventManagement.IntegrationTests\EventManagement.IntegrationTests.csproj", "{07045BE8-7F23-46C7-9AB7-6FC16FCF0684}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

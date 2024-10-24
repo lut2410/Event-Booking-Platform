@@ -9,10 +9,13 @@ namespace Bookings.Presentation.Controllers
     [Route("api/[controller]")]
     public class BookingController : ControllerBase
     {
+        private readonly ILogger<BookingController> _logger;
         private readonly BookingService _bookingService;
 
-        public BookingController(BookingService bookingService)
+        public BookingController(ILogger<BookingController> logger,
+            BookingService bookingService)
         {
+            _logger = logger;
             _bookingService = bookingService;
         }
 
@@ -33,6 +36,7 @@ namespace Bookings.Presentation.Controllers
         [HttpPost]
         public IActionResult CreateBooking([FromBody] CreateBookingDto bookingDto)
         {
+            _logger.LogInformation($"Booking");
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
@@ -43,7 +47,17 @@ namespace Bookings.Presentation.Controllers
                 BookingDate = bookingDto.BookingDate
             };
 
-            _bookingService.AddBooking(booking);
+            try
+            {
+                _bookingService.AddBooking(booking);
+                _logger.LogInformation("Successfully added booking with Id: {BookingId}", booking.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while adding a booking for UserId: {UserId}, EventId: {EventId}",
+                                 booking.UserId, booking.EventId);
+                throw;
+            }
 
             return Ok();
         }

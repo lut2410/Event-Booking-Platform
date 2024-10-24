@@ -5,8 +5,19 @@ using Bookings.Presentation.Middleware;
 using Bookings.Presentation.Validators;
 using FluentValidation.AspNetCore;
 using Prometheus;
+using Serilog;
+using Serilog.Sinks.Network;
 
 var builder = WebApplication.CreateBuilder(args);
+
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.UDPSink("http://logstash", 5000)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 ConfigureServices(builder.Services);
 
@@ -29,7 +40,6 @@ void ConfigureServices(IServiceCollection services)
 
 
     services.AddScoped<BookingService>();
-
 
     services.AddScoped<IBookingRepository, BookingRepository>();
 }
