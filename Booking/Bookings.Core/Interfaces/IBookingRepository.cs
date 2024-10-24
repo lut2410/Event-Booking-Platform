@@ -5,7 +5,7 @@ namespace Bookings.Core.Interfaces
     public interface IBookingRepository
     {
         IEnumerable<Booking> GetAllBookings();
-        Booking GetBookingById(int id);
+        Booking GetBookingById(Guid id);
         void AddBooking(Booking booking);
     }
 }

@@ -26,7 +26,7 @@ namespace Bookings.Presentation.Controllers
         }
 
         [HttpGet("{id}")]
-        public ActionResult<Booking> GetBooking(int id)
+        public ActionResult<Booking> GetBooking(Guid id)
         {
             var booking = _bookingService.GetBookingById(id);
             if (booking == null) return NotFound();

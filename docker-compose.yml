@@ -1,6 +1,18 @@
 version: '3.4'
 
 services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: ${SA_PASSWORD:-SAP@ssword123}
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    networks:
+      - app-network
+    volumes:
+      - dbdata:/var/opt/mssql
+
   eventmanagement:
     image: eventmanagement
     build:
@@ -17,14 +29,20 @@ services:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
       - LOGSTASH_HOST=${LOGSTASH_HOST:-logstash}
       - LOGSTASH_PORT=${LOGSTASH_PORT:-5000}
+      - ConnectionStrings__DefaultConnection=${ConnectionStrings_MainDB:-Server=sqlserver;Database=EventBooking0;User Id=sa;Password=SAP@ssword123;TrustServerCertificate=True;}
     build:
       context: .
       dockerfile: Booking/Bookings.Presentation/Dockerfile
     ports:
       - "6001:8080"
+    depends_on:
+      - sqlserver
     networks:
       - monitoring
       - elk
+      - app-network
+    volumes:
+      - ./src:/app/src
 
   prometheus:
     image: prom/prometheus:latest
@@ -90,7 +108,12 @@ services:
       - elasticsearch
 
 networks:
+  app-network:
+    driver: bridge
   elk:
     driver: bridge
   monitoring:
     driver: bridge
+
+volumes:
+  dbdata:

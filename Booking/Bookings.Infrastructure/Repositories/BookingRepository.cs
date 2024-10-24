@@ -8,7 +8,7 @@ namespace Bookings.Infrastructure.Repositories
         private readonly List<Booking> _bookings = new();
 
         public IEnumerable<Booking> GetAllBookings() => _bookings;
-        public Booking GetBookingById(int id) => _bookings.FirstOrDefault(b => b.Id == id);
+        public Booking GetBookingById(Guid id) => _bookings.FirstOrDefault(b => b.Id == id);
         public void AddBooking(Booking booking) => _bookings.Add(booking);
     }
 }

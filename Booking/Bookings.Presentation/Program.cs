@@ -1,9 +1,11 @@
 using Bookings.Application.Services;
 using Bookings.Core.Interfaces;
+using Bookings.Infrastructure;
 using Bookings.Infrastructure.Repositories;
 using Bookings.Presentation.Middleware;
 using Bookings.Presentation.Validators;
 using FluentValidation.AspNetCore;
+using Microsoft.EntityFrameworkCore;
 using Prometheus;
 using Serilog;
 using Serilog.Sinks.Network;
@@ -38,6 +40,8 @@ void ConfigureServices(IServiceCollection services)
     services.AddControllers()
             .AddFluentValidation(fv => fv.RegisterValidatorsFromAssemblyContaining<CreateBookingDtoValidator>());
 
+    services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
     services.AddScoped<BookingService>();
 
@@ -46,6 +50,13 @@ void ConfigureServices(IServiceCollection services)
 
 void ConfigureMiddleware(WebApplication app)
 {
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        dbContext.Database.Migrate();
+    }
+
     app.UseMiddleware<ErrorHandlingMiddleware>();
 
     app.UseRouting();

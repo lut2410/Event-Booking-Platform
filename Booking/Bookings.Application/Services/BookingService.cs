@@ -13,7 +13,7 @@ namespace Bookings.Application.Services
         }
 
         public IEnumerable<Booking> GetAllBookings() => _bookingRepository.GetAllBookings();
-        public Booking GetBookingById(int id) => _bookingRepository.GetBookingById(id);
+        public Booking GetBookingById(Guid id) => _bookingRepository.GetBookingById(id);
         public void AddBooking(Booking booking) => _bookingRepository.AddBooking(booking);
     }
 }
