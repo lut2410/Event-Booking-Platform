@@ -10,13 +10,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Bookings.Application\Bookings.Application.csproj" />
     <ProjectReference Include="..\Bookings.Core\Bookings.Core.csproj" />
+    <ProjectReference Include="..\Bookings.Infrastructure\Bookings.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

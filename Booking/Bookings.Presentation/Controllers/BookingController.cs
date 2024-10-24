@@ -1,5 +1,6 @@
 using Bookings.Application.Services;
 using Bookings.Core.Entities;
+using Bookings.Presentation.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bookings.Presentation.Controllers
@@ -30,9 +31,20 @@ namespace Bookings.Presentation.Controllers
         }
 
         [HttpPost]
-        public ActionResult AddBooking(Booking booking)
+        public IActionResult CreateBooking([FromBody] CreateBookingDto bookingDto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var booking = new Booking
+            {
+                UserId = bookingDto.UserId,
+                EventId = bookingDto.EventId,
+                BookingDate = bookingDto.BookingDate
+            };
+
             _bookingService.AddBooking(booking);
+
             return Ok();
         }
     }
