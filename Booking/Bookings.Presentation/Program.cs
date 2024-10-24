@@ -51,3 +51,5 @@ void ConfigureMiddleware(WebApplication app)
 
     app.MapControllers();
 }
+
+public partial class Program { }
