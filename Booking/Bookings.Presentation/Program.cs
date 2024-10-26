@@ -1,7 +1,5 @@
-using Bookings.Application.Services;
-using Bookings.Core.Interfaces;
 using Bookings.Infrastructure;
-using Bookings.Infrastructure.Repositories;
+using Bookings.Presentation;
 using Bookings.Presentation.Middleware;
 using Bookings.Presentation.Validators;
 using FluentValidation.AspNetCore;
@@ -9,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Prometheus;
 using Serilog;
 using Serilog.Sinks.Network;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,18 +37,21 @@ void ConfigureServices(IServiceCollection services)
     services.UseHttpClientMetrics();
 
     services.AddControllers()
-            .AddFluentValidation(fv => fv.RegisterValidatorsFromAssemblyContaining<CreateBookingDtoValidator>());
+            .AddFluentValidation(fv => fv.RegisterValidatorsFromAssemblyContaining<CreateBookingRequestValidator>());
 
     services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-    services.AddScoped<BookingService>();
-
-    services.AddScoped<IBookingRepository, BookingRepository>();
+    services.RegisterServicesFromAssemblies(
+    Assembly.Load("Bookings.Core"),
+    Assembly.Load("Bookings.Application"),
+    Assembly.Load("Bookings.Infrastructure")
+);
 }
+
 
 void ConfigureMiddleware(WebApplication app)
 {
+    Console.Write(builder.Configuration.GetConnectionString("DefaultConnection"));
     using (var scope = app.Services.CreateScope())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();

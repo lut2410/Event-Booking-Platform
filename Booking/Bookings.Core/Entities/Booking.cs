@@ -9,7 +9,7 @@
         public PaymentStatus PaymentStatus { get; set; }
         public DateTimeOffset BookingDate { get; set; }
 
-        public ICollection<BookingSeat> BookingSeats { get; set; }
+        public ICollection<BookingSeat> BookingSeats { get; set; } = new List<BookingSeat>();
     }
 
     public enum PaymentStatus
