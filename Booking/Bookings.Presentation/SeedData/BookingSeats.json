@@ -1,0 +1,35 @@
+﻿[
+  // Booking for Event 1 (Seats A2 and A4)
+  {
+    "BookingId": "b1a8d6f9-1a2b-43b5-aabf-731c1a1d1f53",
+    "SeatId": "a2a6d5a4-9c4b-4f67-9c0d-1c1e403f7453" // A2 for Event 1
+  },
+  {
+    "BookingId": "b1a8d6f9-1a2b-43b5-aabf-731c1a1d1f53",
+    "SeatId": "a2a6d5a4-9c4b-4f67-9c0d-1c1e403f7455" // A4 for Event 1
+  },
+
+  // Booking for Event 2 by user2
+  {
+    "BookingId": "b2a8d6f9-1a2b-43b5-aabf-731c1a1d1f54",
+    "SeatId": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7553" // A2 for Event 2
+  },
+  {
+    "BookingId": "b2a8d6f9-1a2b-43b5-aabf-731c1a1d1f54",
+    "SeatId": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7555" // A4 for Event 2
+  },
+  {
+    "BookingId": "b2a8d6f9-1a2b-43b5-aabf-731c1a1d1f54",
+    "SeatId": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7557" // A6 for Event 2
+  },
+
+  // Booking for Event 2 by user3
+  {
+    "BookingId": "b3a8d6f9-1a2b-43b5-aabf-731c1a1d1f55",
+    "SeatId": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7563" // B2 for Event 2
+  },
+  {
+    "BookingId": "b3a8d6f9-1a2b-43b5-aabf-731c1a1d1f55",
+    "SeatId": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7565" // B4 for Event 2
+  }
+]

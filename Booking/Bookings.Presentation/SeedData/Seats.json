@@ -1,0 +1,187 @@
+[
+  // Seats for Event 1
+  {
+    "Id": "a2a6d5a4-9c4b-4f67-9c0d-1c1e403f7452",
+    "SeatNumber": "A1",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47653e"
+  },
+  {
+    "Id": "a2a6d5a4-9c4b-4f67-9c0d-1c1e403f7453",
+    "SeatNumber": "A2",
+    "Status": 1,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47653e"
+  },
+  {
+    "Id": "a2a6d5a4-9c4b-4f67-9c0d-1c1e403f7454",
+    "SeatNumber": "A3",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47653e"
+  },
+  {
+    "Id": "a2a6d5a4-9c4b-4f67-9c0d-1c1e403f7455",
+    "SeatNumber": "A4",
+    "Status": 1,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47653e"
+  },
+  {
+    "Id": "a2a6d5a4-9c4b-4f67-9c0d-1c1e403f7456",
+    "SeatNumber": "A5",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47653e"
+  },
+
+  // Seats for Event 2
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7552",
+    "SeatNumber": "A1",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7553",
+    "SeatNumber": "A2",
+    "Status": 1,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7554",
+    "SeatNumber": "A3",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7555",
+    "SeatNumber": "A4",
+    "Status": 1,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7556",
+    "SeatNumber": "A5",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7557",
+    "SeatNumber": "A6",
+    "Status": 1,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7558",
+    "SeatNumber": "A7",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7559",
+    "SeatNumber": "A8",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7560",
+    "SeatNumber": "A9",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7561",
+    "SeatNumber": "A10",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7562",
+    "SeatNumber": "B1",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7563",
+    "SeatNumber": "B2",
+    "Status": 1,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7564",
+    "SeatNumber": "B3",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7565",
+    "SeatNumber": "B4",
+    "Status": 1,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7566",
+    "SeatNumber": "B5",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7567",
+    "SeatNumber": "B6",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7568",
+    "SeatNumber": "B7",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7569",
+    "SeatNumber": "B8",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7570",
+    "SeatNumber": "B9",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+  {
+    "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7571",
+    "SeatNumber": "B10",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
+  },
+
+  // Seats for Event 3
+  {
+    "Id": "c4c8e6c6-0e5d-6f79-a2f1-3d3f504f8662",
+    "SeatNumber": "A1",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47655a"
+  },
+  {
+    "Id": "c4c8e6c6-0e5d-6f79-a2f1-3d3f504f8663",
+    "SeatNumber": "A2",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47655a"
+  },
+  {
+    "Id": "c4c8e6c6-0e5d-6f79-a2f1-3d3f504f8664",
+    "SeatNumber": "A3",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47655a"
+  },
+  {
+    "Id": "c4c8e6c6-0e5d-6f79-a2f1-3d3f504f8665",
+    "SeatNumber": "A4",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47655a"
+  },
+  {
+    "Id": "c4c8e6c6-0e5d-6f79-a2f1-3d3f504f8666",
+    "SeatNumber": "A5",
+    "Status": 0,
+    "EventId": "d6c7d849-30d1-4c12-8320-531c1e47655a"
+  }
+]

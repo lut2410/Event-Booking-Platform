@@ -41,7 +41,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventManagement.Tests", "Ev
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventManagement.IntegrationTests", "EventManagement.Tests\EventManagement.IntegrationTests\EventManagement.IntegrationTests.csproj", "{07045BE8-7F23-46C7-9AB7-6FC16FCF0684}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bookings.Infrastructure", "Booking\Bookings.Infrastructure\Bookings.Infrastructure.csproj", "{0E4CAADB-F76A-4565-9DA1-C6EB5DF808E5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Bookings.Infrastructure", "Booking\Bookings.Infrastructure\Bookings.Infrastructure.csproj", "{0E4CAADB-F76A-4565-9DA1-C6EB5DF808E5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SeedData", "SeedData", "{41EE4988-E04C-4785-9F7E-68CC541A2D3F}"
+	ProjectSection(SolutionItems) = preProject
+		seats.json = seats.json
+		BookingSeats.json = BookingSeats.json
+		bookings.json = bookings.json
+		Events.json = Events.json
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -114,6 +122,7 @@ Global
 		{6C1DFC9C-2EB1-4B3F-BD3B-7B402937F346} = {E39029C4-D3A6-4224-8FE3-9E5531ABEA58}
 		{07045BE8-7F23-46C7-9AB7-6FC16FCF0684} = {E39029C4-D3A6-4224-8FE3-9E5531ABEA58}
 		{0E4CAADB-F76A-4565-9DA1-C6EB5DF808E5} = {E506D146-EBE3-431F-B0B0-DA5BAE3C9D58}
+		{41EE4988-E04C-4785-9F7E-68CC541A2D3F} = {FA6C9E0C-54B0-4417-9F89-404741715AF6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D91CCC5-E10B-495D-ABD7-B77E94CFF8A3}

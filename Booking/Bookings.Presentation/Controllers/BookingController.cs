@@ -1,7 +1,8 @@
 using Azure.Core;
+using Bookings.Application.DTOs;
+using Bookings.Application.Interfaces;
 using Bookings.Application.Services;
 using Bookings.Core.Entities;
-using Bookings.Core.Interfaces.Services;
 using Bookings.Presentation.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,7 +23,7 @@ namespace Bookings.Presentation.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Booking>>> GetBookings()
+        public async Task<ActionResult<IEnumerable<BookingDTO>>> GetBookings()
         {
             var bookings = await _bookingService.GetAllAsync();
             return Ok(bookings);

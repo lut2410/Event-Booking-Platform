@@ -15,7 +15,10 @@ namespace Bookings.Infrastructure.Repositories
 
         public async Task<IEnumerable<Booking>> GetAllAsync()
         {
-            return await _dbContext.Bookings.ToListAsync();
+            return await _dbContext.Bookings
+                .Include(b => b.BookingSeats)
+                .ThenInclude(bs => bs.Seat)
+                .ToListAsync();
         }
 
         public async Task<Booking> GetByIdAsync(Guid bookingId)

@@ -2,6 +2,7 @@ using Bookings.Infrastructure;
 using Bookings.Presentation;
 using Bookings.Presentation.Middleware;
 using Bookings.Presentation.Validators;
+using BookingService.Infrastructure;
 using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using Prometheus;
@@ -51,12 +52,14 @@ void ConfigureServices(IServiceCollection services)
 
 void ConfigureMiddleware(WebApplication app)
 {
-    Console.Write(builder.Configuration.GetConnectionString("DefaultConnection"));
+    bool shouldSeedDatabase = builder.Configuration.GetValue<bool>("SeedDatabase");
     using (var scope = app.Services.CreateScope())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         dbContext.Database.Migrate();
+        if (shouldSeedDatabase)
+            AppDbContextSeeder.Seed(dbContext);
     }
 
     app.UseMiddleware<ErrorHandlingMiddleware>();
