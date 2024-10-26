@@ -4,6 +4,7 @@ namespace Bookings.Application.Interfaces
 {
     public interface IPaymentService
     {
-        Task<string> ProcessPaymentAsync(PaymentRequest paymentRequest);
+        Task<PaymentResult> ProcessPaymentAsync(PaymentRequest paymentRequest);
+        Task<string> ProcessRefundAsync(RefundRequest refundRequest);
     }
 }

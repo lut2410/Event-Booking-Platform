@@ -9,5 +9,7 @@ namespace Bookings.Application.Interfaces
         Task<BookingDTO> GetByIdAsync(Guid bookingId);
         Task<ReservationResult> ReserveSeatsAsync(Guid eventId, Guid userId, List<Guid> seatIds);
         Task<PaymentResult> ConfirmPaymentAsync(Guid bookingId, Guid userId, PaymentRequest paymentRequest);
+        Task<PaymentResult> RequestRefundAsync(Guid bookingId, RefundRequest refundRequest);
+        Task<PaymentResult> SelfRequestRefundAsync(Guid bookingId);
     }
 }

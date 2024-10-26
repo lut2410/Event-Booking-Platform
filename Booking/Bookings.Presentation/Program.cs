@@ -46,6 +46,7 @@ void ConfigureServices(IServiceCollection services)
     services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
     builder.Services.AddScoped<PaymentIntentService>();
+    builder.Services.AddScoped<RefundService>();
     services.RegisterServicesFromAssemblies(
     Assembly.Load("Bookings.Core"),
     Assembly.Load("Bookings.Application"),

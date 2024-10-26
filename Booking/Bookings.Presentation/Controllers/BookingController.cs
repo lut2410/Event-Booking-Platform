@@ -82,5 +82,27 @@ namespace Bookings.Presentation.Controllers
                 }
             }
         }
+
+        //For admin, supporter, event cancellations  
+        [HttpPost("{bookingId}/refund")]
+        public async Task<IActionResult> RefundBooking(Guid bookingId, [FromBody] RefundRequest refundRequest)
+        {
+            var result = await _bookingService.RequestRefundAsync(bookingId, refundRequest);
+            if (result.Success)
+                return Ok(result.Message);
+
+            return BadRequest(result.Message);
+        }
+
+        // Restrict customer refunds
+        [HttpPost("{bookingId}/refund/self")]
+        public async Task<IActionResult> SelfRefundBooking(Guid bookingId)
+        {
+            var result = await _bookingService.SelfRequestRefundAsync(bookingId);
+            if (result.Success)
+                return Ok(result.Message);
+
+            return BadRequest(result.Message);
+        }
     }
 }

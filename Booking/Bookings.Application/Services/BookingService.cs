@@ -3,6 +3,7 @@ using Bookings.Application.Interfaces;
 using Bookings.Core.Entities;
 using Bookings.Core.Interfaces.Repositories;
 using Stripe;
+using System.Net.Sockets;
 
 namespace Bookings.Application.Services
 {
@@ -96,14 +97,16 @@ namespace Bookings.Application.Services
             if (booking == null || booking.UserId != userId || booking.BookingSeats.Any(bs => bs.Seat.Status != SeatStatus.Reserved))
                 return new PaymentResult { Success = false, Message = "Seats are no longer reserved." };
 
-            var paymentStatus = await _paymentService.ProcessPaymentAsync(paymentRequest);
+            var paymentResult = await _paymentService.ProcessPaymentAsync(paymentRequest);
 
-            if (paymentStatus != "succeeded")
+            if (!paymentResult.Success)
             {
-                return new PaymentResult { Success = false, Message = paymentStatus };
+                return paymentResult;
             }
 
             booking.PaymentStatus = PaymentStatus.Paid;
+            booking.ChargedDate = DateTimeOffset.Now;
+            booking.PaymentIntentId = paymentResult.PaymentIntentId;
             foreach (var bookingSeat in booking.BookingSeats)
             {
                 bookingSeat.Seat.Status = SeatStatus.Booked;
@@ -113,6 +116,69 @@ namespace Bookings.Application.Services
             await _bookingRepository.UpdateAsync(booking);
 
             return new PaymentResult { Success = true, Message = "Payment successful. Seats confirmed." };
+        }
+
+        public async Task<PaymentResult> RequestRefundAsync(Guid bookingId, RefundRequest refundRequest)
+        {
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+
+            if (booking == null || booking.PaymentStatus != PaymentStatus.Paid)
+                return new PaymentResult { Success = false, Message = "Booking not eligible for refund." };
+
+            if (!IsRefundEligible(booking))
+                return new PaymentResult { Success = false, Message = "Booking outside the refund policy." };
+
+            var refundStatus = await _paymentService.ProcessRefundAsync(refundRequest);
+
+            if (refundStatus == "succeeded")
+            {
+                booking.PaymentStatus = PaymentStatus.Refunded;
+                await _bookingRepository.UpdateAsync(booking);
+                return new PaymentResult { Success = true, Message = "Refund successful." };
+            }
+
+            return new PaymentResult { Success = false, Message = $"Refund failed: {refundStatus}" };
+        }
+
+        public async Task<PaymentResult> SelfRequestRefundAsync(Guid bookingId)
+        {
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+            if (booking == null)
+            {
+                return new PaymentResult { Success = false, Message = "Booking not found or access denied." };
+            }
+
+            if (!IsRefundEligible(booking))
+            {
+                return new PaymentResult { Success = false, Message = "Refund period has expired." };
+            }
+
+            if (booking.PaymentStatus != PaymentStatus.Paid)
+            {
+                return new PaymentResult { Success = false, Message = "Booking is not eligible for a refund." };
+            }
+
+            var refundRequest = new RefundRequest
+            {
+                PaymentIntentId = booking.PaymentIntentId,
+                Reason = "requested_by_customer"
+            };
+
+            var refundStatus = await _paymentService.ProcessRefundAsync(refundRequest);
+            if (refundStatus == "succeeded")
+            {
+                booking.PaymentStatus = PaymentStatus.Refunded;
+                await _bookingRepository.UpdateAsync(booking);
+
+                return new PaymentResult { Success = true, Message = "Refund successful." };
+            }
+
+            return new PaymentResult { Success = false, Message = $"Refund failed: {refundStatus}" };
+        }
+
+        private bool IsRefundEligible(Booking booking)
+        {
+            return true;
         }
 
     }

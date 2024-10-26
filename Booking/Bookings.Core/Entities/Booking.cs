@@ -8,6 +8,8 @@
         public Guid? GuestBookingId { get; set; }
         public PaymentStatus PaymentStatus { get; set; }
         public DateTimeOffset BookingDate { get; set; }
+        public DateTimeOffset? ChargedDate { get; set; }
+        public string? PaymentIntentId { get; set; }
 
         public ICollection<BookingSeat> BookingSeats { get; set; } = new List<BookingSeat>();
     }
@@ -16,7 +18,8 @@
     {
         Pending,
         Paid,
-        Failed
+        Failed,
+        Refunded
     }
 
 }
