@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace BookingService.Infrastructure
+namespace Bookings.Infrastructure
 {
     public static class AppDbContextSeeder
     {

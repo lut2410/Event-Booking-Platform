@@ -2,6 +2,7 @@
 using Bookings.Application.Interfaces;
 using Bookings.Core.Entities;
 using Bookings.Core.Interfaces.Repositories;
+using Stripe;
 
 namespace Bookings.Application.Services
 {
@@ -9,11 +10,13 @@ namespace Bookings.Application.Services
     {
         private readonly IBookingRepository _bookingRepository;
         private readonly ISeatRepository _seatRepository;
+        private readonly IPaymentService _paymentService;
 
-        public BookingService(IBookingRepository bookingRepository, ISeatRepository seatRepository)
+        public BookingService(IBookingRepository bookingRepository, ISeatRepository seatRepository, IPaymentService paymentService)
         {
             _bookingRepository = bookingRepository;
             _seatRepository = seatRepository;
+            _paymentService = paymentService;
         }
 
         public async Task<IEnumerable<BookingDTO>> GetAllAsync()
@@ -54,19 +57,19 @@ namespace Bookings.Application.Services
                 }).ToList()
             };
         }
-        public async Task<BookingDTO> CreateBookingAsync(Guid eventId, Guid userId, List<Guid> seatIds)
+
+        public async Task<ReservationResult> ReserveSeatsAsync(Guid eventId, Guid userId, List<Guid> seatIds)
         {
             var seats = await _seatRepository.GetSeatsByIdsAsync(seatIds);
             if (seats.Count != seatIds.Count || seats.Any(seat => seat.EventId != eventId || seat.Status != SeatStatus.Available))
-                throw new Exception("One or more seats are not available for this event.");
-
+                return new ReservationResult { Success = false, Message = "One or more seats are no longer available." };
+            var reservationExpiresAt = DateTimeOffset.UtcNow.AddMinutes(10);
             foreach (var seat in seats)
             {
-                seat.Status = SeatStatus.Booked;
-                seat.ReservationExpiresAt = DateTimeOffset.UtcNow.AddMinutes(10);
+                seat.Status = SeatStatus.Reserved;
+                seat.ReservationExpiresAt = reservationExpiresAt;
             }
 
-            // Create the booking and link each seat through BookingSeat
             var booking = new Booking
             {
                 Id = Guid.NewGuid(),
@@ -81,24 +84,36 @@ namespace Bookings.Application.Services
                 ).ToList()
             };
 
-            // Save the booking and update seat status in the database
             await _bookingRepository.AddAsync(booking);
             await _seatRepository.UpdateSeatsAsync(seats);
 
-            return new BookingDTO
-            {
-                Id = booking.Id,
-                EventId = eventId,
-                UserId = userId,
-                BookingDate = booking.BookingDate,
-                PaymentStatus = booking.PaymentStatus,
-                Seats = booking.BookingSeats.Select(bs => new SeatDTO
-                {
-                    Id = bs.Seat.Id,
-                    SeatNumber = bs.Seat.SeatNumber,
-                    Status = bs.Seat.Status
-                }).ToList()
-            }; ;
+            return new ReservationResult { Success = true, Message = "Seats reserved successfully.", CreatedBookingId = booking.Id, ReservationExpiresAt = reservationExpiresAt };
         }
+
+        public async Task<PaymentResult> ConfirmPaymentAsync(Guid bookingId, Guid userId, PaymentRequest paymentRequest)
+        {
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+            if (booking == null || booking.UserId != userId || booking.BookingSeats.Any(bs => bs.Seat.Status != SeatStatus.Reserved))
+                return new PaymentResult { Success = false, Message = "Seats are no longer reserved." };
+
+            var paymentStatus = await _paymentService.ProcessPaymentAsync(paymentRequest);
+
+            if (paymentStatus != "succeeded")
+            {
+                return new PaymentResult { Success = false, Message = paymentStatus };
+            }
+
+            booking.PaymentStatus = PaymentStatus.Paid;
+            foreach (var bookingSeat in booking.BookingSeats)
+            {
+                bookingSeat.Seat.Status = SeatStatus.Booked;
+                bookingSeat.Seat.ReservationExpiresAt = null;
+            }
+
+            await _bookingRepository.UpdateAsync(booking);
+
+            return new PaymentResult { Success = true, Message = "Payment successful. Seats confirmed." };
+        }
+
     }
 }

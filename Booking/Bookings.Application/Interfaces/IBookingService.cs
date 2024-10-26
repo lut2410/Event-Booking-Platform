@@ -7,6 +7,7 @@ namespace Bookings.Application.Interfaces
     {
         Task<IEnumerable<BookingDTO>> GetAllAsync();
         Task<BookingDTO> GetByIdAsync(Guid bookingId);
-        Task<BookingDTO> CreateBookingAsync(Guid eventId, Guid userId, List<Guid> seatIds);
+        Task<ReservationResult> ReserveSeatsAsync(Guid eventId, Guid userId, List<Guid> seatIds);
+        Task<PaymentResult> ConfirmPaymentAsync(Guid bookingId, Guid userId, PaymentRequest paymentRequest);
     }
 }

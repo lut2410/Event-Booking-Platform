@@ -3,7 +3,6 @@ using Bookings.Application.DTOs;
 using Bookings.Application.Interfaces;
 using Bookings.Application.Services;
 using Bookings.Core.Entities;
-using Bookings.Presentation.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bookings.Presentation.Controllers
@@ -39,24 +38,48 @@ namespace Bookings.Presentation.Controllers
             return Ok(booking);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateBooking([FromBody] CreateBookingRequest request)
+        [HttpPost("reserve")]
+        public async Task<ActionResult> ReserveSeats([FromBody] ReserveSeatsRequest request)
         {
             _logger.LogInformation($"Booking");
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-
             try
             {
-                var booking = await _bookingService.CreateBookingAsync(request.EventId, request.UserId, request.SeatIds);
-                _logger.LogInformation("Successfully added booking with Id: {BookingId}", booking.Id);
-                return CreatedAtAction(nameof(GetBookingById), new { id = booking.Id }, booking);
+                var reserved = await _bookingService.ReserveSeatsAsync(request.EventId, request.UserId, request.SeatIds);
+                _logger.LogInformation("Successfully added booking with Id: {BookingId} until {ReservationExpiresAt}", reserved.CreatedBookingId, reserved.ReservationExpiresAt);
+                return CreatedAtAction(nameof(ReserveSeats), new { id = reserved.CreatedBookingId, reservationExpiresAt = reserved.ReservationExpiresAt }, reserved);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while adding a booking for UserId: {UserId}, EventId: {EventId}",
                                  request.UserId, request.EventId);
                 throw;
+            }
+        }
+
+        [HttpPost("confirm-payment")]
+        public async Task<ActionResult> ConfirmPayment([FromBody] ConfirmPaymentRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var paymentResult = await _bookingService.ConfirmPaymentAsync(request.BookingId, request.UserId, request.PaymentRequest);
+
+            if (paymentResult.Success)
+            {
+                return Ok(paymentResult.Message);
+            }
+            else
+            {
+                if (paymentResult.Message == "requires_action")
+                {
+                    return BadRequest("Further action is required, such as 3D Secure authentication.");
+                }
+                else
+                {
+                    return BadRequest($"Payment failed: {paymentResult}");
+                }
             }
         }
     }

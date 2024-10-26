@@ -2,12 +2,13 @@ using Bookings.Infrastructure;
 using Bookings.Presentation;
 using Bookings.Presentation.Middleware;
 using Bookings.Presentation.Validators;
-using BookingService.Infrastructure;
 using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
 using Prometheus;
 using Serilog;
 using Serilog.Sinks.Network;
+using Stripe;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,6 +32,8 @@ app.Run();
 
 void ConfigureServices(IServiceCollection services)
 {
+    StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
+
     services.AddControllers();
 
     services.AddEndpointsApiExplorer();
@@ -38,10 +41,11 @@ void ConfigureServices(IServiceCollection services)
     services.UseHttpClientMetrics();
 
     services.AddControllers()
-            .AddFluentValidation(fv => fv.RegisterValidatorsFromAssemblyContaining<CreateBookingRequestValidator>());
+            .AddFluentValidation(fv => fv.RegisterValidatorsFromAssemblyContaining<ReserveSeatsRequestValidator>());
 
     services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    builder.Services.AddScoped<PaymentIntentService>();
     services.RegisterServicesFromAssemblies(
     Assembly.Load("Bookings.Core"),
     Assembly.Load("Bookings.Application"),

@@ -9,7 +9,7 @@
   {
     "Id": "a2a6d5a4-9c4b-4f67-9c0d-1c1e403f7453",
     "SeatNumber": "A2",
-    "Status": 1,
+    "Status": 2,
     "EventId": "d6c7d849-30d1-4c12-8320-531c1e47653e"
   },
   {
@@ -21,7 +21,7 @@
   {
     "Id": "a2a6d5a4-9c4b-4f67-9c0d-1c1e403f7455",
     "SeatNumber": "A4",
-    "Status": 1,
+    "Status": 2,
     "EventId": "d6c7d849-30d1-4c12-8320-531c1e47653e"
   },
   {
@@ -41,7 +41,7 @@
   {
     "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7553",
     "SeatNumber": "A2",
-    "Status": 1,
+    "Status": 2,
     "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
   },
   {
@@ -53,7 +53,7 @@
   {
     "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7555",
     "SeatNumber": "A4",
-    "Status": 1,
+    "Status": 2,
     "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
   },
   {
@@ -65,7 +65,7 @@
   {
     "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7557",
     "SeatNumber": "A6",
-    "Status": 1,
+    "Status": 2,
     "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
   },
   {
@@ -101,7 +101,7 @@
   {
     "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7563",
     "SeatNumber": "B2",
-    "Status": 1,
+    "Status": 2,
     "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
   },
   {
@@ -113,7 +113,7 @@
   {
     "Id": "b3b7d5b5-9d4c-5f68-9d1e-2c2e403f7565",
     "SeatNumber": "B4",
-    "Status": 1,
+    "Status": 2,
     "EventId": "d6c7d849-30d1-4c12-8320-531c1e47654f"
   },
   {

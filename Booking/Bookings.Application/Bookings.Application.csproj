@@ -10,4 +10,8 @@
     <ProjectReference Include="..\Bookings.Core\Bookings.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Stripe.net" Version="46.2.1" />
+  </ItemGroup>
+
 </Project>
