@@ -1,4 +1,6 @@
-﻿namespace Bookings.Core.Entities
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Bookings.Core.Entities
 {
     public class Booking
     {
@@ -12,6 +14,8 @@
         public string? PaymentIntentId { get; set; }
 
         public ICollection<BookingSeat> BookingSeats { get; set; } = new List<BookingSeat>();
+        [Timestamp]
+        public byte[] RowVersion { get; set; }
     }
 
     public enum PaymentStatus

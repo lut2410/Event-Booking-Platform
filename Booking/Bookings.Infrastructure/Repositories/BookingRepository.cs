@@ -21,12 +21,19 @@ namespace Bookings.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<Booking> GetByIdAsync(Guid bookingId)
+        public async Task<Booking> GetByIdAsync(Guid bookingId, bool noTracking = false)
         {
-            return await _dbContext.Bookings
+            var query = _dbContext.Bookings
                 .Include(b => b.BookingSeats)
-                .ThenInclude(bs=>bs.Seat)
-                .FirstOrDefaultAsync(b => b.Id == bookingId);
+                .ThenInclude(bs => bs.Seat)
+                .Where(b => b.Id == bookingId);
+
+            if (noTracking)
+            {
+                query = query.AsNoTracking();
+            }
+
+            return await query.FirstOrDefaultAsync();
         }
 
         public async Task AddAsync(Booking booking)
@@ -49,6 +56,11 @@ namespace Bookings.Infrastructure.Repositories
                 _dbContext.Bookings.Remove(booking);
                 await _dbContext.SaveChangesAsync();
             }
+        }
+
+        public async Task ReloadEntryAsync(Booking booking)
+        {
+            await _dbContext.Entry(booking).ReloadAsync();
         }
     }
 }

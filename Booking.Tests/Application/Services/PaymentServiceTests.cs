@@ -1,17 +1,18 @@
+using System.Threading.Tasks;
 using Bookings.Application.DTOs;
+using Bookings.Application.Interfaces;
 using Bookings.Application.Services;
 using Moq;
 using Stripe;
-using System.Threading.Tasks;
 using Xunit;
 
-namespace Bookings.Application.Tests
+namespace Bookings.Tests.Services
 {
     public class PaymentServiceTests
     {
-        private readonly PaymentService _paymentService;
         private readonly Mock<PaymentIntentService> _mockPaymentIntentService;
         private readonly Mock<RefundService> _mockRefundService;
+        private readonly PaymentService _paymentService;
 
         public PaymentServiceTests()
         {
@@ -21,7 +22,7 @@ namespace Bookings.Application.Tests
         }
 
         [Fact]
-        public async Task ProcessPaymentAsync_ShouldReturnSuccess_WhenPaymentSucceeds()
+        public async Task ProcessPaymentAsync_ShouldReturnSuccess_WhenPaymentIsSuccessful()
         {
             // Arrange
             var paymentRequest = new PaymentRequest
@@ -32,12 +33,12 @@ namespace Bookings.Application.Tests
 
             var paymentIntent = new PaymentIntent
             {
-                Id = "pi_test",
+                Id = "pi_123456",
                 Status = "succeeded"
             };
 
             _mockPaymentIntentService
-                .Setup(p => p.CreateAsync(It.IsAny<PaymentIntentCreateOptions>(), null, default))
+                .Setup(service => service.CreateAsync(It.IsAny<PaymentIntentCreateOptions>(), null, default))
                 .ReturnsAsync(paymentIntent);
 
             // Act
@@ -46,7 +47,7 @@ namespace Bookings.Application.Tests
             // Assert
             Assert.True(result.Success);
             Assert.Equal("succeeded", result.Message);
-            Assert.Equal("pi_test", result.PaymentIntentId);
+            Assert.Equal("pi_123456", result.PaymentIntentId);
         }
 
         [Fact]
@@ -61,11 +62,11 @@ namespace Bookings.Application.Tests
 
             var stripeException = new StripeException
             {
-                StripeError = new StripeError { Message = "Payment failed due to insufficient funds." }
+                StripeError = new StripeError { Message = "Payment failed due to an error." }
             };
 
             _mockPaymentIntentService
-                .Setup(p => p.CreateAsync(It.IsAny<PaymentIntentCreateOptions>(), null, default))
+                .Setup(service => service.CreateAsync(It.IsAny<PaymentIntentCreateOptions>(), null, default))
                 .ThrowsAsync(stripeException);
 
             // Act
@@ -73,28 +74,29 @@ namespace Bookings.Application.Tests
 
             // Assert
             Assert.False(result.Success);
-            Assert.Equal("Payment failed due to insufficient funds.", result.Message);
+            Assert.Equal("Payment failed due to an error.", result.Message);
             Assert.Null(result.PaymentIntentId);
         }
 
         [Fact]
-        public async Task ProcessRefundAsync_ShouldReturnSuccess_WhenRefundSucceeds()
+        public async Task ProcessRefundAsync_ShouldReturnSuccess_WhenRefundIsSuccessful()
         {
             // Arrange
             var refundRequest = new RefundRequest
             {
-                PaymentIntentId = "pi_test",
+                PaymentIntentId = "pi_123456",
                 Amount = 5000,
                 Reason = "requested_by_customer"
             };
 
             var refund = new Refund
             {
+                Id = "re_123456",
                 Status = "succeeded"
             };
 
             _mockRefundService
-                .Setup(r => r.CreateAsync(It.IsAny<RefundCreateOptions>(), null, default))
+                .Setup(service => service.CreateAsync(It.IsAny<RefundCreateOptions>(), null, default))
                 .ReturnsAsync(refund);
 
             // Act
@@ -105,12 +107,12 @@ namespace Bookings.Application.Tests
         }
 
         [Fact]
-        public async Task ProcessRefundAsync_ShouldReturnFailureMessage_WhenRefundFails()
+        public async Task ProcessRefundAsync_ShouldReturnFailure_WhenRefundFails()
         {
             // Arrange
             var refundRequest = new RefundRequest
             {
-                PaymentIntentId = "pi_test",
+                PaymentIntentId = "pi_123456",
                 Amount = 5000,
                 Reason = "requested_by_customer"
             };
@@ -121,7 +123,7 @@ namespace Bookings.Application.Tests
             };
 
             _mockRefundService
-                .Setup(r => r.CreateAsync(It.IsAny<RefundCreateOptions>(), null, default))
+                .Setup(service => service.CreateAsync(It.IsAny<RefundCreateOptions>(), null, default))
                 .ThrowsAsync(stripeException);
 
             // Act

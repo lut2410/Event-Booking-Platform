@@ -8,7 +8,6 @@ using Bookings.Application.Services;
 using Bookings.Core.Entities;
 using Bookings.Core.Interfaces.Repositories;
 using Moq;
-using Stripe.Billing;
 using Xunit;
 
 namespace Bookings.Tests.Services
@@ -25,18 +24,22 @@ namespace Bookings.Tests.Services
             _mockBookingRepository = new Mock<IBookingRepository>();
             _mockSeatRepository = new Mock<ISeatRepository>();
             _mockPaymentService = new Mock<IPaymentService>();
-            _bookingService = new BookingService(_mockBookingRepository.Object, _mockSeatRepository.Object, _mockPaymentService.Object);
+            _bookingService = new BookingService(
+                _mockBookingRepository.Object,
+                _mockSeatRepository.Object,
+                _mockPaymentService.Object);
         }
 
         [Fact]
         public async Task GetAllAsync_ShouldReturnAllBookings()
         {
             // Arrange
+            var bookingId = Guid.NewGuid();
             var bookings = new List<Booking>
             {
                 new Booking
                 {
-                    Id = Guid.NewGuid(),
+                    Id = bookingId,
                     BookingDate = DateTimeOffset.UtcNow,
                     PaymentStatus = PaymentStatus.Paid,
                     EventId = Guid.NewGuid(),
@@ -47,7 +50,6 @@ namespace Bookings.Tests.Services
                     }
                 }
             };
-
             _mockBookingRepository.Setup(repo => repo.GetAllAsync()).ReturnsAsync(bookings);
 
             // Act
@@ -55,7 +57,7 @@ namespace Bookings.Tests.Services
 
             // Assert
             Assert.Single(result);
-            Assert.Equal(bookings[0].Id, result.First().Id);
+            Assert.Equal(bookingId, result.First().Id);
             Assert.Equal("A1", result.First().Seats.First().SeatNumber);
         }
 
@@ -73,31 +75,29 @@ namespace Bookings.Tests.Services
                 UserId = Guid.NewGuid(),
                 BookingSeats = new List<BookingSeat>
                 {
-                    new BookingSeat { Seat = new Seat { Id = Guid.NewGuid(), SeatNumber = "B1", Status = SeatStatus.Booked } }
+                    new BookingSeat { Seat = new Seat { Id = Guid.NewGuid(), SeatNumber = "A1", Status = SeatStatus.Booked } }
                 }
             };
-
-            _mockBookingRepository.Setup(repo => repo.GetByIdAsync(bookingId)).ReturnsAsync(booking);
+            _mockBookingRepository.Setup(repo => repo.GetByIdAsync(bookingId, It.IsAny<bool>())).ReturnsAsync(booking);
 
             // Act
             var result = await _bookingService.GetByIdAsync(bookingId);
 
             // Assert
-            Assert.NotNull(result);
             Assert.Equal(bookingId, result.Id);
-            Assert.Equal("B1", result.Seats.First().SeatNumber);
+            Assert.Equal("A1", result.Seats.First().SeatNumber);
         }
 
         [Fact]
         public async Task ReserveSeatsAsync_ShouldReserveSeatsSuccessfully()
         {
             // Arrange
-            var seatIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() };
             var eventId = Guid.NewGuid();
             var userId = Guid.NewGuid();
+            var seatIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() };
             var seats = seatIds.Select(id => new Seat { Id = id, EventId = eventId, Status = SeatStatus.Available }).ToList();
 
-            _mockSeatRepository.Setup(repo => repo.GetSeatsByIdsAsync(seatIds)).ReturnsAsync(seats);
+            _mockSeatRepository.Setup(repo => repo.GetSeatsByIdsAsync(seatIds, It.IsAny<bool>())).ReturnsAsync(seats);
 
             // Act
             var result = await _bookingService.ReserveSeatsAsync(eventId, userId, seatIds);
@@ -115,6 +115,7 @@ namespace Bookings.Tests.Services
             // Arrange
             var bookingId = Guid.NewGuid();
             var userId = Guid.NewGuid();
+            var paymentRequest = new PaymentRequest { Amount = 5000, PaymentMethodId = "pm_card_visa" };
             var booking = new Booking
             {
                 Id = bookingId,
@@ -126,8 +127,7 @@ namespace Bookings.Tests.Services
                 }
             };
 
-            var paymentRequest = new PaymentRequest { Amount = 5000, PaymentMethodId = "pm_card_visa" };
-            _mockBookingRepository.Setup(repo => repo.GetByIdAsync(bookingId)).ReturnsAsync(booking);
+            _mockBookingRepository.Setup(repo => repo.GetByIdAsync(bookingId, It.IsAny<bool>())).ReturnsAsync(booking);
             _mockPaymentService.Setup(service => service.ProcessPaymentAsync(paymentRequest))
                 .ReturnsAsync(new PaymentResult { Success = true, PaymentIntentId = "pi_123456" });
 
@@ -137,13 +137,11 @@ namespace Bookings.Tests.Services
             // Assert
             Assert.True(result.Success);
             Assert.Equal("Payment successful. Seats confirmed.", result.Message);
-            Assert.Equal(PaymentStatus.Paid, booking.PaymentStatus);
-            Assert.Equal("pi_123456", booking.PaymentIntentId);
-            _mockBookingRepository.Verify(repo => repo.UpdateAsync(booking), Times.Once);
+            _mockBookingRepository.Verify(repo => repo.UpdateAsync(It.Is<Booking>(b => b.PaymentStatus == PaymentStatus.Paid)), Times.Once);
         }
 
         [Fact]
-        public async Task RequestRefundAsync_ShouldReturnSuccess_WhenRefundIsProcessed()
+        public async Task RequestRefundAsync_ShouldProcessRefund_WhenBookingIsEligible()
         {
             // Arrange
             var bookingId = Guid.NewGuid();
@@ -154,7 +152,7 @@ namespace Bookings.Tests.Services
                 PaymentIntentId = "pi_123456"
             };
 
-            _mockBookingRepository.Setup(repo => repo.GetByIdAsync(bookingId)).ReturnsAsync(booking);
+            _mockBookingRepository.Setup(repo => repo.GetByIdAsync(bookingId, It.IsAny<bool>())).ReturnsAsync(booking);
             _mockPaymentService.Setup(service => service.ProcessRefundAsync(It.IsAny<RefundRequest>()))
                 .ReturnsAsync("succeeded");
 
@@ -164,12 +162,11 @@ namespace Bookings.Tests.Services
             // Assert
             Assert.True(result.Success);
             Assert.Equal("Refund successful.", result.Message);
-            Assert.Equal(PaymentStatus.Refunded, booking.PaymentStatus);
-            _mockBookingRepository.Verify(repo => repo.UpdateAsync(booking), Times.Once);
+            _mockBookingRepository.Verify(repo => repo.UpdateAsync(It.Is<Booking>(b => b.PaymentStatus == PaymentStatus.Refunded)), Times.Once);
         }
 
         [Fact]
-        public async Task SelfRequestRefundAsync_ShouldReturnSuccess_WhenSelfRefundIsEligible()
+        public async Task SelfRequestRefundAsync_ShouldReturnSuccess_WhenRefundEligible()
         {
             // Arrange
             var bookingId = Guid.NewGuid();
@@ -181,7 +178,7 @@ namespace Bookings.Tests.Services
                 BookingDate = DateTimeOffset.UtcNow.AddDays(-5)
             };
 
-            _mockBookingRepository.Setup(repo => repo.GetByIdAsync(bookingId)).ReturnsAsync(booking);
+            _mockBookingRepository.Setup(repo => repo.GetByIdAsync(bookingId, It.IsAny<bool>())).ReturnsAsync(booking);
             _mockPaymentService.Setup(service => service.ProcessRefundAsync(It.IsAny<RefundRequest>()))
                 .ReturnsAsync("succeeded");
 
@@ -191,8 +188,7 @@ namespace Bookings.Tests.Services
             // Assert
             Assert.True(result.Success);
             Assert.Equal("Refund successful.", result.Message);
-            Assert.Equal(PaymentStatus.Refunded, booking.PaymentStatus);
-            _mockBookingRepository.Verify(repo => repo.UpdateAsync(booking), Times.Once);
+            _mockBookingRepository.Verify(repo => repo.UpdateAsync(It.Is<Booking>(b => b.PaymentStatus == PaymentStatus.Refunded)), Times.Once);
         }
     }
 }

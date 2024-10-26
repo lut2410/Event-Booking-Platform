@@ -62,7 +62,10 @@ void ConfigureMiddleware(WebApplication app)
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        dbContext.Database.Migrate();
+        if (dbContext.Database.IsRelational())
+        {
+            dbContext.Database.Migrate();
+        }
         if (shouldSeedDatabase)
             AppDbContextSeeder.Seed(dbContext);
     }

@@ -39,6 +39,7 @@ namespace Bookings.Application.Services
                 }).ToList()
             }).ToList();
         }
+
         public async Task<BookingDTO> GetByIdAsync(Guid id)
         {
             var booking = await _bookingRepository.GetByIdAsync(id);
@@ -61,66 +62,96 @@ namespace Bookings.Application.Services
 
         public async Task<ReservationResult> ReserveSeatsAsync(Guid eventId, Guid userId, List<Guid> seatIds)
         {
-            var seats = await _seatRepository.GetSeatsByIdsAsync(seatIds);
-            if (seats.Count != seatIds.Count || seats.Any(seat => seat.EventId != eventId || seat.Status != SeatStatus.Available))
-                return new ReservationResult { Success = false, Message = "One or more seats are no longer available." };
-            var reservationExpiresAt = DateTimeOffset.UtcNow.AddMinutes(10);
-            foreach (var seat in seats)
+            int maxRetries = 3;
+            for (int attempt = 0; attempt < maxRetries; attempt++)
             {
-                seat.Status = SeatStatus.Reserved;
-                seat.ReservationExpiresAt = reservationExpiresAt;
-            }
-
-            var booking = new Booking
-            {
-                Id = Guid.NewGuid(),
-                EventId = eventId,
-                UserId = userId,
-                PaymentStatus = PaymentStatus.Pending,
-                BookingDate = DateTimeOffset.Now,
-                BookingSeats = seats.Select(seat => new BookingSeat
+                try
                 {
-                    SeatId = seat.Id
+                    var seats = await _seatRepository.GetSeatsByIdsAsync(seatIds, noTracking: true);
+                    if (seats.Count != seatIds.Count || seats.Any(seat => seat.EventId != eventId || seat.Status != SeatStatus.Available))
+                        return new ReservationResult { Success = false, Message = "One or more seats are no longer available." };
+                    var reservationExpiresAt = DateTimeOffset.UtcNow.AddMinutes(10);
+                    foreach (var seat in seats)
+                    {
+                        seat.Status = SeatStatus.Reserved;
+                        seat.ReservationExpiresAt = reservationExpiresAt;
+                    }
+
+                    var booking = new Booking
+                    {
+                        Id = Guid.NewGuid(),
+                        EventId = eventId,
+                        UserId = userId,
+                        PaymentStatus = PaymentStatus.Pending,
+                        BookingDate = DateTimeOffset.Now,
+                        BookingSeats = seats.Select(seat => new BookingSeat
+                        {
+                            SeatId = seat.Id
+                        }
+                        ).ToList()
+                    };
+
+                    await _bookingRepository.AddAsync(booking);
+                    await _seatRepository.UpdateSeatsAsync(seats);
+
+                    return new ReservationResult { Success = true, Message = "Seats reserved successfully.", CreatedBookingId = booking.Id, ReservationExpiresAt = reservationExpiresAt };
                 }
-                ).ToList()
-            };
+                catch (Exception e)
+                {
+                    if (attempt == maxRetries - 1)
+                        throw;
 
-            await _bookingRepository.AddAsync(booking);
-            await _seatRepository.UpdateSeatsAsync(seats);
-
-            return new ReservationResult { Success = true, Message = "Seats reserved successfully.", CreatedBookingId = booking.Id, ReservationExpiresAt = reservationExpiresAt };
+                    continue;
+                }
+            }
+            return new ReservationResult { Success = false, Message = "Unable to reserve seats due to concurrent updates." };
         }
 
         public async Task<PaymentResult> ConfirmPaymentAsync(Guid bookingId, Guid userId, PaymentRequest paymentRequest)
         {
-            var booking = await _bookingRepository.GetByIdAsync(bookingId);
-            if (booking == null || booking.UserId != userId || booking.BookingSeats.Any(bs => bs.Seat.Status != SeatStatus.Reserved))
-                return new PaymentResult { Success = false, Message = "Seats are no longer reserved." };
-
-            var paymentResult = await _paymentService.ProcessPaymentAsync(paymentRequest);
-
-            if (!paymentResult.Success)
+            int maxRetries = 3;
+            for (int attempt = 0; attempt < maxRetries; attempt++)
             {
-                return paymentResult;
+                try
+                {
+                    var booking = await _bookingRepository.GetByIdAsync(bookingId, noTracking: true);
+                    if (booking == null || booking.UserId != userId || booking.BookingSeats.Any(bs => bs.Seat.Status != SeatStatus.Reserved))
+                        return new PaymentResult { Success = false, Message = "Seats are no longer reserved." };
+
+                    var paymentResult = await _paymentService.ProcessPaymentAsync(paymentRequest);
+
+                    if (!paymentResult.Success)
+                    {
+                        return paymentResult;
+                    }
+
+                    booking.PaymentStatus = PaymentStatus.Paid;
+                    booking.ChargedDate = DateTimeOffset.Now;
+                    booking.PaymentIntentId = paymentResult.PaymentIntentId;
+                    foreach (var bookingSeat in booking.BookingSeats)
+                    {
+                        bookingSeat.Seat.Status = SeatStatus.Booked;
+                        bookingSeat.Seat.ReservationExpiresAt = null;
+                    }
+
+                    await _bookingRepository.UpdateAsync(booking);
+
+                    return new PaymentResult { Success = true, Message = "Payment successful. Seats confirmed." };
+                }
+                catch (Exception e)
+                {
+                    if (attempt == maxRetries - 1)
+                        throw;
+
+                    continue;
+                }
             }
-
-            booking.PaymentStatus = PaymentStatus.Paid;
-            booking.ChargedDate = DateTimeOffset.Now;
-            booking.PaymentIntentId = paymentResult.PaymentIntentId;
-            foreach (var bookingSeat in booking.BookingSeats)
-            {
-                bookingSeat.Seat.Status = SeatStatus.Booked;
-                bookingSeat.Seat.ReservationExpiresAt = null;
-            }
-
-            await _bookingRepository.UpdateAsync(booking);
-
-            return new PaymentResult { Success = true, Message = "Payment successful. Seats confirmed." };
+            return new PaymentResult { Success = false, Message = "Unable to confirm payment due to concurrent updates." };
         }
 
         public async Task<PaymentResult> RequestRefundAsync(Guid bookingId, RefundRequest refundRequest)
         {
-            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+            var booking = await _bookingRepository.GetByIdAsync(bookingId, noTracking: true);
 
             if (booking == null || booking.PaymentStatus != PaymentStatus.Paid)
                 return new PaymentResult { Success = false, Message = "Booking not eligible for refund." };
@@ -142,7 +173,7 @@ namespace Bookings.Application.Services
 
         public async Task<PaymentResult> SelfRequestRefundAsync(Guid bookingId)
         {
-            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+            var booking = await _bookingRepository.GetByIdAsync(bookingId, noTracking: true);
             if (booking == null)
             {
                 return new PaymentResult { Success = false, Message = "Booking not found or access denied." };
