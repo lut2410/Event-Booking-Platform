@@ -141,7 +141,7 @@ namespace Bookings.IntegrationTests.Controllers
             var response = await _client.PostAsJsonAsync("/api/Booking/reserve", request);
 
             // Assert
-            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         }
 

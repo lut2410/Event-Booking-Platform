@@ -1,9 +1,16 @@
-﻿using Bookings.Application.DTOs;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Bookings.Application.DTOs;
 using Bookings.Application.Interfaces;
 using Bookings.Core.Entities;
 using Bookings.Core.Interfaces.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Polly;
+using Polly.Wrap;
 
 namespace Bookings.Application.Services
 {
@@ -13,14 +20,21 @@ namespace Bookings.Application.Services
         private readonly ISeatRepository _seatRepository;
         private readonly IPaymentService _paymentService;
         private readonly IRedisSeatReservationService _reservationCacheService;
+        private readonly IRedisFraudDetectionService _fraudDetectionService;
         private readonly ILogger<BookingService> _logger;
+        private readonly AsyncPolicyWrap _policyWrap;
         private readonly TimeSpan _reservationTime;
+
+        private readonly ConcurrentDictionary<Guid, int> _failedReservations = new();
+        private readonly ConcurrentDictionary<Guid, int> _failedPayments = new();
+        private readonly int _maxFailedAttempts = 5;
 
         public BookingService(
             IBookingRepository bookingRepository,
             ISeatRepository seatRepository,
             IPaymentService paymentService,
             IRedisSeatReservationService reservationCacheService,
+            IRedisFraudDetectionService fraudDetectionService,
             IConfiguration configuration,
             ILogger<BookingService> logger)
         {
@@ -28,11 +42,39 @@ namespace Bookings.Application.Services
             _seatRepository = seatRepository;
             _paymentService = paymentService;
             _reservationCacheService = reservationCacheService;
+            _fraudDetectionService = fraudDetectionService;
             _logger = logger;
+
+            _policyWrap = ConfigurePolicies();
 
             var reservationMinutes = configuration.GetValue<int>("SeatReservation:TimeInMinutes", 10);
             _reservationTime = TimeSpan.FromMinutes(reservationMinutes);
             _logger.LogInformation("Initialized BookingService with reservation time: {ReservationTime}", _reservationTime);
+        }
+
+        private AsyncPolicyWrap ConfigurePolicies()
+        {
+            var retryPolicy = Policy
+                .Handle<Exception>()
+                .RetryAsync(3, (exception, retryCount) =>
+                {
+                    _logger.LogWarning("Retry {RetryCount} due to: {ExceptionMessage}", retryCount, exception.Message);
+                });
+
+            var circuitBreakerPolicy = Policy
+                .Handle<Exception>()
+                .CircuitBreakerAsync(
+                    exceptionsAllowedBeforeBreaking: 5,
+                    durationOfBreak: TimeSpan.FromMinutes(1),
+                    onBreak: (ex, duration) =>
+                    {
+                        _logger.LogWarning("Circuit breaker opened for {Duration} due to: {ExceptionMessage}", duration, ex.Message);
+                    },
+                    onReset: () => _logger.LogInformation("Circuit breaker reset."),
+                    onHalfOpen: () => _logger.LogInformation("Circuit breaker half-open; testing service.")
+                );
+
+            return Policy.WrapAsync(retryPolicy, circuitBreakerPolicy);
         }
 
         public async Task<IEnumerable<BookingDTO>> GetAllAsync()
@@ -88,113 +130,107 @@ namespace Bookings.Application.Services
         {
             _logger.LogInformation("Attempting to reserve seats for EventId: {EventId}, UserId: {UserId}", eventId, userId);
 
-            var redisReservationSuccess = await _reservationCacheService.TryReserveSeatsAsync(eventId, userId, seatIds, _reservationTime);
-            if (!redisReservationSuccess)
+            if (await _fraudDetectionService.IsUserBlockedAsync(userId))
             {
-                _logger.LogWarning("Redis reservation failed for EventId: {EventId}, UserId: {UserId}", eventId, userId);
-                return new ReservationResult { Success = false, Message = "Some seats are no longer available." };
+                return new ReservationResult { Success = false, Message = "Reservation blocked due to suspected fraud." };
             }
 
-            int maxRetries = 3;
-            for (int attempt = 0; attempt < maxRetries; attempt++)
+            // Execute reserve operation with circuit breaker and retry policies
+            return await _policyWrap.ExecuteAsync(async () =>
             {
-                try
+                var redisReservationSuccess = await _reservationCacheService.TryReserveSeatsAsync(eventId, userId, seatIds, _reservationTime);
+                if (!redisReservationSuccess)
                 {
-                    var seats = await _seatRepository.GetSeatsByIdsAsync(seatIds, noTracking: true);
-                    if (seats.Count != seatIds.Count || seats.Any(seat => seat.EventId != eventId || seat.Status != SeatStatus.Available))
-                    {
-                        _logger.LogWarning("Seat reservation failed: some seats are unavailable for EventId: {EventId}, UserId: {UserId}", eventId, userId);
-                        await _reservationCacheService.ReleaseSeatsAsync(eventId, userId, seatIds);
-                        return new ReservationResult { Success = false, Message = "One or more seats are no longer available." };
-                    }
-
-                    var reservationExpiresAt = DateTimeOffset.UtcNow.Add(_reservationTime);
-                    foreach (var seat in seats)
-                    {
-                        seat.Status = SeatStatus.Reserved;
-                        seat.ReservationExpiresAt = reservationExpiresAt;
-                    }
-
-                    var booking = new Booking
-                    {
-                        Id = Guid.NewGuid(),
-                        EventId = eventId,
-                        UserId = userId,
-                        PaymentStatus = PaymentStatus.Pending,
-                        BookingDate = DateTimeOffset.UtcNow,
-                        BookingSeats = seats.Select(seat => new BookingSeat { SeatId = seat.Id }).ToList()
-                    };
-
-                    await _bookingRepository.AddAsync(booking);
-                    await _seatRepository.UpdateSeatsAsync(seats);
-
-                    _logger.LogInformation("Seats successfully reserved for BookingId: {BookingId} until {ExpiresAt}", booking.Id, reservationExpiresAt);
-                    return new ReservationResult { Success = true, Message = "Seats reserved successfully.", CreatedBookingId = booking.Id, ReservationExpiresAt = reservationExpiresAt };
+                    _logger.LogWarning("Redis reservation failed for EventId: {EventId}, UserId: {UserId}", eventId, userId);
+                    await _fraudDetectionService.RecordFailedAttemptAsync(userId);
+                    return new ReservationResult { Success = false, Message = "Some seats are no longer available." };
                 }
-                catch (Exception ex)
+
+                var seats = await _seatRepository.GetSeatsByIdsAsync(seatIds, noTracking: true);
+                if (seats.Count != seatIds.Count || seats.Any(seat => seat.EventId != eventId || seat.Status != SeatStatus.Available))
                 {
-                    _logger.LogError(ex, "Error reserving seats on attempt {Attempt} for EventId: {EventId}, UserId: {UserId}", attempt + 1, eventId, userId);
-                    if (attempt == maxRetries - 1)
-                    {
-                        await _reservationCacheService.ReleaseSeatsAsync(eventId, userId, seatIds);
-                        throw;
-                    }
+                    await _reservationCacheService.ReleaseSeatsAsync(eventId, userId, seatIds);
+                    await _fraudDetectionService.RecordFailedAttemptAsync(userId);
+                    return new ReservationResult { Success = false, Message = "One or more seats are no longer available." };
                 }
-            }
-            _logger.LogWarning("Unable to reserve seats after {MaxRetries} attempts for EventId: {EventId}, UserId: {UserId}", maxRetries, eventId, userId);
-            return new ReservationResult { Success = false, Message = "Unable to reserve seats due to concurrent updates." };
+
+                var reservationExpiresAt = DateTimeOffset.UtcNow.Add(_reservationTime);
+                foreach (var seat in seats)
+                {
+                    seat.Status = SeatStatus.Reserved;
+                    seat.ReservationExpiresAt = reservationExpiresAt;
+                }
+
+                var booking = new Booking
+                {
+                    Id = Guid.NewGuid(),
+                    EventId = eventId,
+                    UserId = userId,
+                    PaymentStatus = PaymentStatus.Pending,
+                    BookingDate = DateTimeOffset.Now,
+                    BookingSeats = seats.Select(seat => new BookingSeat { SeatId = seat.Id }).ToList()
+                };
+
+                await _bookingRepository.AddAsync(booking);
+                await _seatRepository.UpdateSeatsAsync(seats);
+
+                await _fraudDetectionService.ClearFailedAttemptsAsync(userId);
+
+                _logger.LogInformation("Seats successfully reserved for BookingId: {BookingId} until {ExpiresAt}", booking.Id, reservationExpiresAt);
+                return new ReservationResult { Success = true, Message = "Seats reserved successfully.", CreatedBookingId = booking.Id, ReservationExpiresAt = reservationExpiresAt };
+            });
         }
 
         public async Task<PaymentResult> ConfirmPaymentAsync(Guid bookingId, Guid userId, PaymentRequest paymentRequest)
         {
-            _logger.LogInformation("Confirming payment for BookingId: {BookingId}, UserId: {UserId}", bookingId, userId);
+            _logger.LogInformation("Attempting to confirm payment for BookingId: {BookingId}, UserId: {UserId}", bookingId, userId);
 
-            int maxRetries = 3;
-            for (int attempt = 0; attempt < maxRetries; attempt++)
+            // Check if user is blocked due to fraud detection
+            if (await _fraudDetectionService.IsUserBlockedAsync(userId))
             {
-                try
-                {
-                    var booking = await _bookingRepository.GetByIdAsync(bookingId, noTracking: true);
-                    if (booking == null || booking.UserId != userId || booking.BookingSeats.Any(bs => bs.Seat.Status != SeatStatus.Reserved))
-                    {
-                        _logger.LogWarning("Payment confirmation failed due to reservation issues for BookingId: {BookingId}", bookingId);
-                        return new PaymentResult { Success = false, Message = "Seats are no longer reserved." };
-                    }
-
-                    var paymentResult = await _paymentService.ProcessPaymentAsync(paymentRequest);
-
-                    if (!paymentResult.Success)
-                    {
-                        _logger.LogWarning("Payment failed for BookingId: {BookingId}, releasing reserved seats", bookingId);
-                        await _reservationCacheService.ReleaseSeatsAsync(booking.EventId, userId, booking.BookingSeats.Select(bs => bs.SeatId).ToList());
-                        return paymentResult;
-                    }
-
-                    booking.PaymentStatus = PaymentStatus.Paid;
-                    booking.ChargedDate = DateTimeOffset.UtcNow;
-                    booking.PaymentIntentId = paymentResult.PaymentIntentId;
-                    foreach (var bookingSeat in booking.BookingSeats)
-                    {
-                        bookingSeat.Seat.Status = SeatStatus.Booked;
-                        bookingSeat.Seat.ReservationExpiresAt = null;
-                    }
-
-                    await _bookingRepository.UpdateAsync(booking);
-                    await _reservationCacheService.ConfirmReservationAsync(booking.EventId, booking.BookingSeats.Select(bs => bs.SeatId).ToList());
-
-                    _logger.LogInformation("Payment confirmed for BookingId: {BookingId}", bookingId);
-                    return new PaymentResult { Success = true, Message = "Payment successful. Seats confirmed." };
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error confirming payment on attempt {Attempt} for BookingId: {BookingId}, UserId: {UserId}", attempt + 1, bookingId, userId);
-                    if (attempt == maxRetries - 1) throw;
-                }
+                _logger.LogWarning("Payment blocked for UserId: {UserId} due to suspected fraud", userId);
+                return new PaymentResult { Success = false, Message = "Payment blocked due to suspected fraud." };
             }
 
-            _logger.LogWarning("Unable to confirm payment after {MaxRetries} attempts for BookingId: {BookingId}", maxRetries, bookingId);
-            return new PaymentResult { Success = false, Message = "Unable to confirm payment due to concurrent updates." };
+            return await _policyWrap.ExecuteAsync(async () =>
+            {
+                var booking = await _bookingRepository.GetByIdAsync(bookingId, noTracking: true);
+                if (booking == null || booking.UserId != userId || booking.BookingSeats.Any(bs => bs.Seat.Status != SeatStatus.Reserved))
+                {
+                    _logger.LogWarning("Payment confirmation failed for BookingId: {BookingId} due to reservation issues.", bookingId);
+                    await _fraudDetectionService.RecordFailedAttemptAsync(userId); // Log as a failed attempt
+                    return new PaymentResult { Success = false, Message = "Seats are no longer reserved." };
+                }
+
+                var paymentResult = await _paymentService.ProcessPaymentAsync(paymentRequest);
+                if (!paymentResult.Success)
+                {
+                    await _fraudDetectionService.RecordFailedAttemptAsync(userId); // Log failed payment attempt
+                    await _reservationCacheService.ReleaseSeatsAsync(booking.EventId, userId, booking.BookingSeats.Select(bs => bs.SeatId).ToList());
+                    return paymentResult;
+                }
+
+                // Clear any failed attempts after successful payment
+                await _fraudDetectionService.ClearFailedAttemptsAsync(userId);
+
+                // Update booking status and finalize seat reservation
+                booking.PaymentStatus = PaymentStatus.Paid;
+                booking.ChargedDate = DateTimeOffset.Now;
+                booking.PaymentIntentId = paymentResult.PaymentIntentId;
+                foreach (var bookingSeat in booking.BookingSeats)
+                {
+                    bookingSeat.Seat.Status = SeatStatus.Booked;
+                    bookingSeat.Seat.ReservationExpiresAt = null;
+                }
+
+                await _bookingRepository.UpdateAsync(booking);
+                await _reservationCacheService.ConfirmReservationAsync(booking.EventId, booking.BookingSeats.Select(bs => bs.SeatId).ToList());
+
+                _logger.LogInformation("Payment confirmed for BookingId: {BookingId}, UserId: {UserId}", bookingId, userId);
+                return new PaymentResult { Success = true, Message = "Payment successful. Seats confirmed." };
+            });
         }
+
         public async Task<PaymentResult> RequestRefundAsync(Guid bookingId, RefundRequest refundRequest)
         {
             _logger.LogInformation("Processing refund for BookingId: {BookingId}", bookingId);
