@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Internal;
 using Prometheus;
 using Serilog;
 using Serilog.Sinks.Network;
+using StackExchange.Redis;
 using Stripe;
 using System.Reflection;
 
@@ -45,8 +46,18 @@ void ConfigureServices(IServiceCollection services)
 
     services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+    services.AddSingleton<IConnectionMultiplexer>(sp =>
+    {
+        var configuration = sp.GetRequiredService<IConfiguration>();
+        var connectionString = configuration["Redis:ConnectionString"];
+        return ConnectionMultiplexer.Connect(connectionString);
+    });
+
     builder.Services.AddScoped<PaymentIntentService>();
     builder.Services.AddScoped<RefundService>();
+
+
     services.RegisterServicesFromAssemblies(
     Assembly.Load("Bookings.Core"),
     Assembly.Load("Bookings.Application"),

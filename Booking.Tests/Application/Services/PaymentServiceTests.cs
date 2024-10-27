@@ -6,7 +6,7 @@ using Moq;
 using Stripe;
 using Xunit;
 
-namespace Bookings.Tests.Services
+namespace Bookings.Tests.Application.Services
 {
     public class PaymentServiceTests
     {

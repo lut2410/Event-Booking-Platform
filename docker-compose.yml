@@ -13,6 +13,14 @@ services:
     volumes:
       - dbdata:/var/opt/mssql
 
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
   eventmanagement:
     image: eventmanagement
     build:
@@ -29,7 +37,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
       - LOGSTASH_HOST=${LOGSTASH_HOST:-logstash}
       - LOGSTASH_PORT=${LOGSTASH_PORT:-5000}
-      - ConnectionStrings__DefaultConnection=${ConnectionStrings_MainDB:-Server=sqlserver;Database=EventBooking0;User Id=sa;Password=SAP@ssword123;TrustServerCertificate=True;}
+      - ConnectionStrings__DefaultConnection=${ConnectionStrings_MainDB:-Server=sqlserver;Database=EventBooking;User Id=sa;Password=SAP@ssword123;TrustServerCertificate=True;}
+      - Redis__ConnectionString=redis:6379
     build:
       context: .
       dockerfile: Booking/Bookings.Presentation/Dockerfile
@@ -37,6 +46,7 @@ services:
       - "6001:8080"
     depends_on:
       - sqlserver
+      - redis
     networks:
       - monitoring
       - elk

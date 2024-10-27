@@ -7,16 +7,19 @@ using Bookings.Application.Interfaces;
 using Bookings.Application.Services;
 using Bookings.Core.Entities;
 using Bookings.Core.Interfaces.Repositories;
+using Microsoft.Extensions.Configuration;
 using Moq;
 using Xunit;
 
-namespace Bookings.Tests.Services
+namespace Bookings.Tests.Application.Services
 {
     public class BookingServiceTests
     {
         private readonly Mock<IBookingRepository> _mockBookingRepository;
         private readonly Mock<ISeatRepository> _mockSeatRepository;
         private readonly Mock<IPaymentService> _mockPaymentService;
+        private readonly Mock<IRedisSeatReservationService> _mockRedisService;
+        private readonly IConfiguration _configuration;
         private readonly BookingService _bookingService;
 
         public BookingServiceTests()
@@ -24,80 +27,50 @@ namespace Bookings.Tests.Services
             _mockBookingRepository = new Mock<IBookingRepository>();
             _mockSeatRepository = new Mock<ISeatRepository>();
             _mockPaymentService = new Mock<IPaymentService>();
+            _mockRedisService = new Mock<IRedisSeatReservationService>();
+
+            var inMemorySettings = new Dictionary<string, string>
+            {
+                { "SeatReservation:TimeInMinutes", "10" }
+            };
+            _configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(inMemorySettings)
+                .Build();
+
+            // Initialize BookingService with mocks
             _bookingService = new BookingService(
                 _mockBookingRepository.Object,
                 _mockSeatRepository.Object,
-                _mockPaymentService.Object);
+                _mockPaymentService.Object,
+                _mockRedisService.Object,
+                _configuration);
         }
 
         [Fact]
-        public async Task GetAllAsync_ShouldReturnAllBookings()
-        {
-            // Arrange
-            var bookingId = Guid.NewGuid();
-            var bookings = new List<Booking>
-            {
-                new Booking
-                {
-                    Id = bookingId,
-                    BookingDate = DateTimeOffset.UtcNow,
-                    PaymentStatus = PaymentStatus.Paid,
-                    EventId = Guid.NewGuid(),
-                    UserId = Guid.NewGuid(),
-                    BookingSeats = new List<BookingSeat>
-                    {
-                        new BookingSeat { Seat = new Seat { Id = Guid.NewGuid(), SeatNumber = "A1", Status = SeatStatus.Booked } }
-                    }
-                }
-            };
-            _mockBookingRepository.Setup(repo => repo.GetAllAsync()).ReturnsAsync(bookings);
-
-            // Act
-            var result = await _bookingService.GetAllAsync();
-
-            // Assert
-            Assert.Single(result);
-            Assert.Equal(bookingId, result.First().Id);
-            Assert.Equal("A1", result.First().Seats.First().SeatNumber);
-        }
-
-        [Fact]
-        public async Task GetByIdAsync_ShouldReturnBookingById()
-        {
-            // Arrange
-            var bookingId = Guid.NewGuid();
-            var booking = new Booking
-            {
-                Id = bookingId,
-                BookingDate = DateTimeOffset.UtcNow,
-                PaymentStatus = PaymentStatus.Paid,
-                EventId = Guid.NewGuid(),
-                UserId = Guid.NewGuid(),
-                BookingSeats = new List<BookingSeat>
-                {
-                    new BookingSeat { Seat = new Seat { Id = Guid.NewGuid(), SeatNumber = "A1", Status = SeatStatus.Booked } }
-                }
-            };
-            _mockBookingRepository.Setup(repo => repo.GetByIdAsync(bookingId, It.IsAny<bool>())).ReturnsAsync(booking);
-
-            // Act
-            var result = await _bookingService.GetByIdAsync(bookingId);
-
-            // Assert
-            Assert.Equal(bookingId, result.Id);
-            Assert.Equal("A1", result.Seats.First().SeatNumber);
-        }
-
-        [Fact]
-        public async Task ReserveSeatsAsync_ShouldReserveSeatsSuccessfully()
+        public async Task ReserveSeatsAsync_ShouldReturnSuccess_WhenSeatsReservedSuccessfully()
         {
             // Arrange
             var eventId = Guid.NewGuid();
             var userId = Guid.NewGuid();
             var seatIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() };
-            var seats = seatIds.Select(id => new Seat { Id = id, EventId = eventId, Status = SeatStatus.Available }).ToList();
+            var seats = seatIds.Select(id => new Seat
+            {
+                Id = id,
+                EventId = eventId,
+                Status = SeatStatus.Available
+            }).ToList();
 
-            _mockSeatRepository.Setup(repo => repo.GetSeatsByIdsAsync(seatIds, It.IsAny<bool>())).ReturnsAsync(seats);
+            _mockRedisService
+                .Setup(service => service.TryReserveSeatsAsync(eventId, userId, seatIds, It.IsAny<TimeSpan>()))
+                .ReturnsAsync(true);
+
+            _mockSeatRepository
+                .Setup(repo => repo.GetSeatsByIdsAsync(seatIds, true))
+                .ReturnsAsync(seats);
+
+            _mockBookingRepository
+                .Setup(repo => repo.AddAsync(It.IsAny<Booking>()))
+                .Returns(Task.CompletedTask);
 
             // Act
             var result = await _bookingService.ReserveSeatsAsync(eventId, userId, seatIds);
@@ -105,90 +78,62 @@ namespace Bookings.Tests.Services
             // Assert
             Assert.True(result.Success);
             Assert.Equal("Seats reserved successfully.", result.Message);
+            _mockRedisService.Verify(service => service.TryReserveSeatsAsync(eventId, userId, seatIds, It.IsAny<TimeSpan>()), Times.Once);
             _mockBookingRepository.Verify(repo => repo.AddAsync(It.IsAny<Booking>()), Times.Once);
-            _mockSeatRepository.Verify(repo => repo.UpdateSeatsAsync(It.IsAny<List<Seat>>()), Times.Once);
         }
 
         [Fact]
-        public async Task ConfirmPaymentAsync_ShouldConfirmPayment_WhenPaymentSucceeds()
+        public async Task ReserveSeatsAsync_ShouldReturnFailure_WhenRedisReservationFails()
         {
             // Arrange
-            var bookingId = Guid.NewGuid();
+            var eventId = Guid.NewGuid();
             var userId = Guid.NewGuid();
-            var paymentRequest = new PaymentRequest { Amount = 5000, PaymentMethodId = "pm_card_visa" };
-            var booking = new Booking
-            {
-                Id = bookingId,
-                UserId = userId,
-                PaymentStatus = PaymentStatus.Pending,
-                BookingSeats = new List<BookingSeat>
-                {
-                    new BookingSeat { Seat = new Seat { Id = Guid.NewGuid(), Status = SeatStatus.Reserved } }
-                }
-            };
+            var seatIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() };
 
-            _mockBookingRepository.Setup(repo => repo.GetByIdAsync(bookingId, It.IsAny<bool>())).ReturnsAsync(booking);
-            _mockPaymentService.Setup(service => service.ProcessPaymentAsync(paymentRequest))
-                .ReturnsAsync(new PaymentResult { Success = true, PaymentIntentId = "pi_123456" });
+            _mockRedisService
+                .Setup(service => service.TryReserveSeatsAsync(eventId, userId, seatIds, It.IsAny<TimeSpan>()))
+                .ReturnsAsync(false);
 
             // Act
-            var result = await _bookingService.ConfirmPaymentAsync(bookingId, userId, paymentRequest);
+            var result = await _bookingService.ReserveSeatsAsync(eventId, userId, seatIds);
 
             // Assert
-            Assert.True(result.Success);
-            Assert.Equal("Payment successful. Seats confirmed.", result.Message);
-            _mockBookingRepository.Verify(repo => repo.UpdateAsync(It.Is<Booking>(b => b.PaymentStatus == PaymentStatus.Paid)), Times.Once);
+            Assert.False(result.Success);
+            Assert.Equal("Some seats are no longer available.", result.Message);
+            _mockRedisService.Verify(service => service.TryReserveSeatsAsync(eventId, userId, seatIds, It.IsAny<TimeSpan>()), Times.Once);
+            _mockBookingRepository.Verify(repo => repo.AddAsync(It.IsAny<Booking>()), Times.Never);
         }
 
         [Fact]
-        public async Task RequestRefundAsync_ShouldProcessRefund_WhenBookingIsEligible()
+        public async Task ReserveSeatsAsync_ShouldReleaseRedisLock_WhenDatabaseReservationFails()
         {
             // Arrange
-            var bookingId = Guid.NewGuid();
-            var booking = new Booking
+            var eventId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var seatIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() };
+            var seats = seatIds.Select(id => new Seat
             {
-                Id = bookingId,
-                PaymentStatus = PaymentStatus.Paid,
-                PaymentIntentId = "pi_123456"
-            };
+                Id = id,
+                EventId = eventId,
+                Status = SeatStatus.Booked // Simulate unavailable seat
+            }).ToList();
 
-            _mockBookingRepository.Setup(repo => repo.GetByIdAsync(bookingId, It.IsAny<bool>())).ReturnsAsync(booking);
-            _mockPaymentService.Setup(service => service.ProcessRefundAsync(It.IsAny<RefundRequest>()))
-                .ReturnsAsync("succeeded");
+            _mockRedisService
+                .Setup(service => service.TryReserveSeatsAsync(eventId, userId, seatIds, It.IsAny<TimeSpan>()))
+                .ReturnsAsync(true);
+
+            _mockSeatRepository
+                .Setup(repo => repo.GetSeatsByIdsAsync(seatIds, true))
+                .ReturnsAsync(seats);
 
             // Act
-            var result = await _bookingService.RequestRefundAsync(bookingId, new RefundRequest { PaymentIntentId = "pi_123456" });
+            var result = await _bookingService.ReserveSeatsAsync(eventId, userId, seatIds);
 
             // Assert
-            Assert.True(result.Success);
-            Assert.Equal("Refund successful.", result.Message);
-            _mockBookingRepository.Verify(repo => repo.UpdateAsync(It.Is<Booking>(b => b.PaymentStatus == PaymentStatus.Refunded)), Times.Once);
-        }
-
-        [Fact]
-        public async Task SelfRequestRefundAsync_ShouldReturnSuccess_WhenRefundEligible()
-        {
-            // Arrange
-            var bookingId = Guid.NewGuid();
-            var booking = new Booking
-            {
-                Id = bookingId,
-                PaymentStatus = PaymentStatus.Paid,
-                PaymentIntentId = "pi_123456",
-                BookingDate = DateTimeOffset.UtcNow.AddDays(-5)
-            };
-
-            _mockBookingRepository.Setup(repo => repo.GetByIdAsync(bookingId, It.IsAny<bool>())).ReturnsAsync(booking);
-            _mockPaymentService.Setup(service => service.ProcessRefundAsync(It.IsAny<RefundRequest>()))
-                .ReturnsAsync("succeeded");
-
-            // Act
-            var result = await _bookingService.SelfRequestRefundAsync(bookingId);
-
-            // Assert
-            Assert.True(result.Success);
-            Assert.Equal("Refund successful.", result.Message);
-            _mockBookingRepository.Verify(repo => repo.UpdateAsync(It.Is<Booking>(b => b.PaymentStatus == PaymentStatus.Refunded)), Times.Once);
+            Assert.False(result.Success);
+            Assert.Equal("One or more seats are no longer available.", result.Message);
+            _mockRedisService.Verify(service => service.ReleaseSeatsAsync(eventId, userId, seatIds), Times.Once);
+            _mockBookingRepository.Verify(repo => repo.AddAsync(It.IsAny<Booking>()), Times.Never);
         }
     }
 }

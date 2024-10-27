@@ -2,6 +2,7 @@
 using Bookings.Application.Interfaces;
 using Bookings.Core.Entities;
 using Bookings.Core.Interfaces.Repositories;
+using Microsoft.Extensions.Configuration;
 using Stripe;
 using System.Net.Sockets;
 
@@ -12,12 +13,22 @@ namespace Bookings.Application.Services
         private readonly IBookingRepository _bookingRepository;
         private readonly ISeatRepository _seatRepository;
         private readonly IPaymentService _paymentService;
+        private readonly IRedisSeatReservationService _reservationCacheService;
+        private readonly TimeSpan _reservationTime;
 
-        public BookingService(IBookingRepository bookingRepository, ISeatRepository seatRepository, IPaymentService paymentService)
+        public BookingService(
+            IBookingRepository bookingRepository,
+            ISeatRepository seatRepository,
+            IPaymentService paymentService,
+            IRedisSeatReservationService reservationCacheService,
+            IConfiguration configuration)
         {
             _bookingRepository = bookingRepository;
             _seatRepository = seatRepository;
             _paymentService = paymentService;
+            _reservationCacheService = reservationCacheService;
+            var reservationMinutes = configuration.GetValue<int>("SeatReservation:TimeInMinutes", 10);
+            _reservationTime = TimeSpan.FromMinutes(reservationMinutes);
         }
 
         public async Task<IEnumerable<BookingDTO>> GetAllAsync()
@@ -62,6 +73,11 @@ namespace Bookings.Application.Services
 
         public async Task<ReservationResult> ReserveSeatsAsync(Guid eventId, Guid userId, List<Guid> seatIds)
         {
+            var redisReservationSuccess = await _reservationCacheService.TryReserveSeatsAsync(eventId, userId, seatIds, _reservationTime);
+            if (!redisReservationSuccess)
+                return new ReservationResult { Success = false, Message = "Some seats are no longer available." };
+
+
             int maxRetries = 3;
             for (int attempt = 0; attempt < maxRetries; attempt++)
             {
@@ -69,8 +85,11 @@ namespace Bookings.Application.Services
                 {
                     var seats = await _seatRepository.GetSeatsByIdsAsync(seatIds, noTracking: true);
                     if (seats.Count != seatIds.Count || seats.Any(seat => seat.EventId != eventId || seat.Status != SeatStatus.Available))
+                    {
+                        await _reservationCacheService.ReleaseSeatsAsync(eventId, userId, seatIds);
                         return new ReservationResult { Success = false, Message = "One or more seats are no longer available." };
-                    var reservationExpiresAt = DateTimeOffset.UtcNow.AddMinutes(10);
+                    }
+                    var reservationExpiresAt = DateTimeOffset.UtcNow.Add(_reservationTime);
                     foreach (var seat in seats)
                     {
                         seat.Status = SeatStatus.Reserved;
@@ -99,7 +118,10 @@ namespace Bookings.Application.Services
                 catch (Exception e)
                 {
                     if (attempt == maxRetries - 1)
+                    {
+                        await _reservationCacheService.ReleaseSeatsAsync(eventId, userId, seatIds);
                         throw;
+                    }
 
                     continue;
                 }
@@ -122,6 +144,7 @@ namespace Bookings.Application.Services
 
                     if (!paymentResult.Success)
                     {
+                        await _reservationCacheService.ReleaseSeatsAsync(booking.EventId, userId, booking.BookingSeats.Select(bs => bs.SeatId).ToList());
                         return paymentResult;
                     }
 
@@ -135,6 +158,7 @@ namespace Bookings.Application.Services
                     }
 
                     await _bookingRepository.UpdateAsync(booking);
+                    await _reservationCacheService.ConfirmReservationAsync(booking.EventId, booking.BookingSeats.Select(bs => bs.SeatId).ToList());
 
                     return new PaymentResult { Success = true, Message = "Payment successful. Seats confirmed." };
                 }
