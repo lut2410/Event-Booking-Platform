@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Xunit;
 using Moq;
@@ -55,7 +56,7 @@ namespace Bookings.Application.Tests.Services
             Assert.True(result.Success);
             Assert.Equal("pi_test", result.PaymentIntentId);
             Assert.Equal("succeeded", result.Message);
-            _loggerMock.Verify(log => log.LogInformation("Payment processing completed with Status: {Status} for PaymentIntentId: {PaymentIntentId}", "succeeded", "pi_test"), Times.Once);
+            VerifyLog(LogLevel.Information, "Payment processing completed with Status:", Times.Once());
         }
 
         [Fact]
@@ -84,7 +85,7 @@ namespace Bookings.Application.Tests.Services
             // Assert
             Assert.False(result.Success);
             Assert.Equal("Payment failed due to insufficient funds.", result.Message);
-            _loggerMock.Verify(log => log.LogError(It.IsAny<StripeException>(), "Payment failed for PaymentMethodId: {PaymentMethodId} with error: {Error}", paymentRequest.PaymentMethodId, "Payment failed due to insufficient funds."), Times.Once);
+            VerifyLog(LogLevel.Error, "Payment failed for PaymentMethodId:", Times.Once());
         }
 
         [Fact]
@@ -113,7 +114,7 @@ namespace Bookings.Application.Tests.Services
 
             // Assert
             Assert.Equal("succeeded", result);
-            _loggerMock.Verify(log => log.LogInformation("Refund processing completed with Status: {Status} for RefundId: {RefundId}", "succeeded", "re_test"), Times.Once);
+            VerifyLog(LogLevel.Information, "Refund processing completed with Status:", Times.Once());
         }
 
         [Fact]
@@ -142,7 +143,19 @@ namespace Bookings.Application.Tests.Services
 
             // Assert
             Assert.Equal("Refund failed due to network error.", result);
-            _loggerMock.Verify(log => log.LogError(It.IsAny<StripeException>(), "Refund failed for PaymentIntentId: {PaymentIntentId} with error: {Error}", refundRequest.PaymentIntentId, "Refund failed due to network error."), Times.Once);
+            VerifyLog(LogLevel.Error, "Refund failed for PaymentIntentId", Times.Once());
+        }
+
+        private void VerifyLog(LogLevel logLevel, string message, Times times)
+        {
+            _loggerMock.Verify(
+                log => log.Log(
+                    logLevel,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains(message)),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                times);
         }
     }
 }

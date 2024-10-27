@@ -22,8 +22,22 @@ else
 
 
 app.UseAuthorization();
+if (app.Environment.IsDevelopment())
+{
+    app.UseEndpoints(endpoints =>
+    {
+        endpoints.MapControllers();
 
-app.MapControllers();
+        // Redirect root URL to Swagger
+        endpoints.MapGet("/", context =>
+        {
+            context.Response.Redirect("/swagger");
+            return Task.CompletedTask;
+        });
+    });
+}
+else
+    app.MapControllers();
 
 app.Run();
 

@@ -162,14 +162,14 @@ This system includes both **unit tests** and **integration tests** for all servi
 #### For the **Booking** service:
 
 ```
-cd Booking/Booking.Tests
+cd Booking.Tests
 dotnet test
 ```
 
 #### For the **Event Management** service:
 
 ```
-cd EventManagement/EventManagement.Tests
+cd EventManagement.Tests/EventManagement.UnitTests
 dotnet test
 ```
 
@@ -182,14 +182,14 @@ Integration tests ensure that the services work correctly with external dependen
 #### For the **Booking** service:
 
 ```
-cd Booking/Booking.Tests
+cd Booking.IntegrationTests
 dotnet test --filter Category=Integration
 ```
 
 #### For the **Event Management** service:
 
 ```
-cd EventManagement/EventManagement.Tests
+cd EventManagement.Tests/EventManagement.IntegrationTests
 dotnet test --filter Category=Integration
 ```
 
@@ -200,7 +200,7 @@ To ensure high code coverage, run the following commands:
 #### For the **Booking** service:
 
 ```
-cd Booking/Booking.Tests
+cd Booking.Tests
 dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=lcov
 ```
 

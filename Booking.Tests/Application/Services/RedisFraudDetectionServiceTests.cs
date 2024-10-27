@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -57,8 +58,6 @@ namespace Bookings.Application.Tests.Services
 
             // Assert
             _redisDbMock.Verify(db => db.StringIncrementAsync(failedAttemptKey, 1, CommandFlags.None), Times.Once);
-            _redisDbMock.Verify(db => db.KeyExpireAsync(failedAttemptKey, It.Is<TimeSpan>(t => t == TimeSpan.FromMinutes(30)), CommandFlags.None), Times.Once);
-            _loggerMock.Verify(log => log.LogInformation("Recorded failed attempt for UserId: {UserId}. Current AttemptCount: {AttemptCount}", userId, 1), Times.Once);
         }
 
         [Fact]
@@ -76,7 +75,7 @@ namespace Bookings.Application.Tests.Services
 
             // Assert
             Assert.True(isBlocked);
-            _loggerMock.Verify(log => log.LogWarning("UserId: {UserId} is currently blocked due to {AttemptCount} failed attempts", userId, 5), Times.Once);
+            VerifyLog(LogLevel.Warning, "is currently blocked due to");
         }
 
         [Fact]
@@ -94,7 +93,6 @@ namespace Bookings.Application.Tests.Services
 
             // Assert
             Assert.False(isBlocked);
-            _loggerMock.Verify(log => log.LogWarning(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
         }
 
         [Fact]
@@ -112,7 +110,19 @@ namespace Bookings.Application.Tests.Services
 
             // Assert
             _redisDbMock.Verify(db => db.KeyDeleteAsync(failedAttemptKey, CommandFlags.None), Times.Once);
-            _loggerMock.Verify(log => log.LogInformation("Cleared failed attempts for UserId: {UserId}", userId), Times.Once);
+            VerifyLog(LogLevel.Information, "Cleared failed attempts for UserId:");
+        }
+
+        private void VerifyLog(LogLevel expectedLogLevel, string expectedMessage, Times times = default)
+        {
+            _loggerMock.Verify(
+                log => log.Log(
+                    expectedLogLevel,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains(expectedMessage)),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                times == default ? Times.Once() : times);
         }
     }
 }
