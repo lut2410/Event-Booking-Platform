@@ -1,8 +1,10 @@
+using Bookings.Application.Services;
 using Bookings.Infrastructure;
 using Bookings.Presentation;
 using Bookings.Presentation.Middleware;
 using Bookings.Presentation.Validators;
 using FluentValidation.AspNetCore;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
 using Prometheus;
@@ -53,7 +55,10 @@ void ConfigureServices(IServiceCollection services)
         var connectionString = configuration["Redis:ConnectionString"];
         return ConnectionMultiplexer.Connect(connectionString);
     });
+    services.AddHangfire(config => config.UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
+    services.AddHangfireServer();
 
+    services.AddTransient<ReservationExpiryJob>();
     builder.Services.AddScoped<PaymentIntentService>();
     builder.Services.AddScoped<RefundService>();
 
@@ -80,6 +85,11 @@ void ConfigureMiddleware(WebApplication app)
         if (shouldSeedDatabase)
             AppDbContextSeeder.Seed(dbContext);
     }
+    app.UseHangfireDashboard();
+
+    // Schedule the ReservationExpiryJob to run every 5 minutes
+    RecurringJob.AddOrUpdate<ReservationExpiryJob>(
+        job => job.CheckAndReleaseExpiredReservationsAsync(), Cron.MinuteInterval(1));
 
     app.UseMiddleware<ErrorHandlingMiddleware>();
 

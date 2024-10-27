@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Bookings.Application.DTOs;
+﻿using Bookings.Application.DTOs;
 using Bookings.Application.Interfaces;
 using Bookings.Core.Entities;
 using Bookings.Core.Interfaces.Repositories;
@@ -11,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Polly;
 using Polly.Wrap;
+using System.Collections.Concurrent;
 
 namespace Bookings.Application.Services
 {
@@ -210,10 +206,8 @@ namespace Bookings.Application.Services
                     return paymentResult;
                 }
 
-                // Clear any failed attempts after successful payment
                 await _fraudDetectionService.ClearFailedAttemptsAsync(userId);
 
-                // Update booking status and finalize seat reservation
                 booking.PaymentStatus = PaymentStatus.Paid;
                 booking.ChargedDate = DateTimeOffset.Now;
                 booking.PaymentIntentId = paymentResult.PaymentIntentId;
@@ -225,7 +219,8 @@ namespace Bookings.Application.Services
 
                 await _bookingRepository.UpdateAsync(booking);
                 await _reservationCacheService.ConfirmReservationAsync(booking.EventId, booking.BookingSeats.Select(bs => bs.SeatId).ToList());
-
+                //TODO: publish a message via RabbitMQ. Notification Service(other project) will consume this message and it will send email to the end user
+                //I dont do here cause project scope
                 _logger.LogInformation("Payment confirmed for BookingId: {BookingId}, UserId: {UserId}", bookingId, userId);
                 return new PaymentResult { Success = true, Message = "Payment successful. Seats confirmed." };
             });

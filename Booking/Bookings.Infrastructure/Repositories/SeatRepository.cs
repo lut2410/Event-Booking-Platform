@@ -35,9 +35,17 @@ namespace Bookings.Infrastructure.Repositories
         {
             await _dbContext.Entry(seat).ReloadAsync();
         }
+
         public void MarkEntryModified(Seat seat)
         {
             _dbContext.Entry(seat).State = EntityState.Modified;
+        }
+
+        public async Task<List<Seat>> GetExpiredReservationsAsync(DateTimeOffset currentDateTime)
+        {
+            return await _dbContext.Seats
+                .Where(seat => seat.Status == SeatStatus.Reserved && seat.ReservationExpiresAt < currentDateTime)
+                .ToListAsync();
         }
     }
 }

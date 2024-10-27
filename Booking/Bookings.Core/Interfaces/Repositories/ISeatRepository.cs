@@ -8,5 +8,6 @@ namespace Bookings.Core.Interfaces.Repositories
         Task UpdateSeatsAsync(List<Seat> seats);
         Task ReloadEntryAsync(Seat seat);
         void MarkEntryModified(Seat seat);
+        Task<List<Seat>> GetExpiredReservationsAsync(DateTimeOffset currentDateTime);
     }
 }
