@@ -34,11 +34,8 @@ Currently, this repository contains two services:
 
 ## 3. Project Structure
 
-bash
-
-Copy code
-
-`EventBooking/
+```
+EventBooking/
 │
 ├── Booking/
 │   ├── Core/              # Core domain for Booking
@@ -60,8 +57,8 @@ Copy code
 │   ├── UnitTests/         # Unit tests for Event Management
 │   └── IntegrationTests/  # Integration tests for Event Management
 │
-└── Solution items         # Global-level items, such as docker-compose.yml and README.md` 
-
+└── Solution items         # Global-level items, such as docker-compose.yml and README.md
+```
 ----------
 
 ## 4. Setup Instructions
@@ -75,34 +72,27 @@ To run the system, follow these steps:
 
 ### 1. Clone the Repository
 
-bash
-
-Copy code
-
-`git clone <repository-link>
-cd "EB Assignment"` 
+```
+git clone <repository-link>
+cd "EB Assignment"
+```
 
 ### 2. Configure Environment Variables
 
 Create a `.env` file in the root of your project:
 
-bash
-
-Copy code
-
-`cp .env.example .env` 
+```
+cp .env.example .env
+``` 
 
 Then, modify values in the `.env` file if necessary. For example, adjust the following variables:
 
-bash
-
-Copy code
-
-`# Application environment
+```
+# Application environment
 ASPNETCORE_ENVIRONMENT=Development
 
 # Payment gateway API keys (e.g., Stripe)
-STRIPE_API_KEY=your_stripe_api_key
+STRIPE_API_KEY=sk_test_4eC39HqLyjWDarjtT1zdp7dc
 
 # Elasticsearch URL
 ELASTICSEARCH_HOST=http://elasticsearch:9200
@@ -110,14 +100,12 @@ ELASTICSEARCH_HOST=http://elasticsearch:9200
 # Elasticsearch credentials
 ELASTICSEARCH_USERNAME=elasticadmin
 ELASTICSEARCH_PASSWORD=elasticPass@123` 
-
+```
 ### 3. Start the Services
 
-bash
-
-Copy code
-
-`docker-compose up --build` 
+```
+docker-compose up --build
+```
 
 ### 4. Verify the Services
 
@@ -153,19 +141,15 @@ Copy code
 
 To stop and remove all running services:
 
-bash
-
-Copy code
-
-`docker-compose down` 
+```
+docker-compose down
+```
 
 To remove all containers, networks, volumes, and images:
 
-bash
-
-Copy code
-
-`docker-compose down --volumes --rmi all` 
+```
+docker-compose down --volumes --rmi all
+```
 
 ----------
 
@@ -177,21 +161,17 @@ This system includes both **unit tests** and **integration tests** for all servi
 
 #### For the **Booking** service:
 
-bash
-
-Copy code
-
-`cd Booking/Booking.Tests
-dotnet test` 
+```
+cd Booking/Booking.Tests
+dotnet test
+```
 
 #### For the **Event Management** service:
 
-bash
-
-Copy code
-
-`cd EventManagement/EventManagement.Tests
-dotnet test` 
+```
+cd EventManagement/EventManagement.Tests
+dotnet test
+```
 
 Wait for the execution to complete and check the results summary.
 
@@ -201,21 +181,17 @@ Integration tests ensure that the services work correctly with external dependen
 
 #### For the **Booking** service:
 
-bash
-
-Copy code
-
-`cd Booking/Booking.Tests
-dotnet test --filter Category=Integration` 
+```
+cd Booking/Booking.Tests
+dotnet test --filter Category=Integration
+```
 
 #### For the **Event Management** service:
 
-bash
-
-Copy code
-
-`cd EventManagement/EventManagement.Tests
-dotnet test --filter Category=Integration` 
+```
+cd EventManagement/EventManagement.Tests
+dotnet test --filter Category=Integration
+```
 
 ### 3. Test Coverage
 
@@ -223,12 +199,10 @@ To ensure high code coverage, run the following commands:
 
 #### For the **Booking** service:
 
-bash
-
-Copy code
-
-`cd Booking/Booking.Tests
-dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=lcov` 
+```
+cd Booking/Booking.Tests
+dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=lcov
+```
 
 You can find the coverage report in the `coverage/` directory.
 
