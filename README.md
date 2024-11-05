@@ -212,11 +212,11 @@ You can find the coverage report in the `coverage/` directory.
 
 ## VI. Demo sites
 
-Booking Service: http://booking.techlab24.net/swagger
-Event Management Service: http://event-management.techlab24.net/swagger
-Prometheus Monitoring:  http://prometheus.techlab24.net
-Grafana Dashboard:  http://grafana.techlab24.net
-Kibana Logging:  http://kibana.techlab24.net
+-   **Booking Service**: [http://booking.techlab24.net/swagger](http://booking.techlab24.net/swagger)
+-   **Event Management Service**: [http://event-management.techlab24.net/swagger](http://event-management.techlab24.net/swagger)
+-   **Prometheus**: [http://prometheus.techlab24.net](http://prometheus.techlab24.net)
+-   **Grafana**: [http://grafana.techlab24.net](http://grafana.techlab24.net)
+-   **Kibana**: [http://kibana.techlab24.net](http://kibana.techlab24.net)
 
 ----------
 
