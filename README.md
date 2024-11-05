@@ -1,7 +1,9 @@
 
 # **Event Booking Platform**
 
-The **Event Booking Platform** consists of multiple microservices such as managing seats, searching seats, booking event seats, and notifications. This repository focuses only on some services; other platform-level details are addressed in the **Architecture Design Document**.
+The **Event Booking Platform** consists of multiple microservices such as managing seats, searching seats, booking event seats, and notifications. This repository focuses only on some services; other platform-level details are addressed in the [Architecture Design Document](Global%20Event%20Booking%20Platform%20Architecture%20Design%20Document.docx).
+
+The design emphasizes a scalable and efficient backend architecture for an event booking platform. In Section VIII of the [Architecture Design Document](Global%20Event%20Booking%20Platform%20Architecture%20Design%20Document.docx), I have included specific architectural decisions and considerations addressing edge cases, performance optimization, and system resilience.
 
 Currently, this repository contains two services:
 
@@ -10,7 +12,7 @@ Currently, this repository contains two services:
 
 ----------
 
-## 1. System Architecture (of Booking Service)
+## I. System Architecture (of Booking Service)
 
 -   **Clean Architecture**: The system is designed with a layered approach, separating Core, Application, Infrastructure, and Presentation layers.
 -   **Global Exception Handling**: Exception handling and validation are implemented using **FluentValidation**.
@@ -19,7 +21,7 @@ Currently, this repository contains two services:
 
 ----------
 
-## 2. Tech Stack
+## II. Tech Stack
 
 -   **.NET 8.0**: The latest version of the .NET framework for building scalable web APIs.
 -   **Stripe SDK**: To handle payment processing.
@@ -32,7 +34,7 @@ Currently, this repository contains two services:
 
 ----------
 
-## 3. Project Structure
+## III. Project Structure
 
 ```
 EventBooking/
@@ -61,7 +63,7 @@ EventBooking/
 ```
 ----------
 
-## 4. Setup Instructions
+## IV. Setup Instructions
 
 To run the system, follow these steps:
 
@@ -153,7 +155,7 @@ docker-compose down --volumes --rmi all
 
 ----------
 
-## 5. Testing Instructions
+## V. Testing Instructions
 
 This system includes both **unit tests** and **integration tests** for all services to ensure functionality and reliability.
 
@@ -208,7 +210,17 @@ You can find the coverage report in the `coverage/` directory.
 
 ----------
 
-## 6. CONTRIBUTING
+## VI. Demo sites
+
+Booking Service: http://booking.techlab24.net/swagger
+Event Management Service: http://event-management.techlab24.net/swagger
+Prometheus Monitoring:  http://prometheus.techlab24.net
+Grafana Dashboard:  http://grafana.techlab24.net
+Kibana Logging:  http://kibana.techlab24.net
+
+----------
+
+## VII. CONTRIBUTING
 
 Please refer to the [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.
 
